@@ -86,7 +86,7 @@ HTML_CODE = """<!DOCTYPE html>
             color: #fff; 
             text-align: center; 
             margin: 0; 
-            padding: 15px; 
+            padding: 15px 15px 80px 15px; 
             background-image: radial-gradient(circle at center, #1a0808 0%, #000000 100%);
             background-attachment: fixed;
         }
@@ -97,7 +97,7 @@ HTML_CODE = """<!DOCTYPE html>
             padding: 22px; 
             margin: 15px auto; 
             max-width: 400px; 
-            box-shadow: 0 0 25px rgba(248,181,0,0.15), inset 0 0 15px rgba(248,181,0,0.03); 
+            box-shadow: 0 0 25px rgba(248,181,0,0.15); 
         }
         .btn { 
             background: linear-gradient(135deg, #f8b500 0%, #d4af37 50%, #aa771c 100%); 
@@ -131,13 +131,33 @@ HTML_CODE = """<!DOCTYPE html>
             font-size: 14px;
         }
         input::placeholder { color: #555; }
-        input:focus { border-color: #fff; box-shadow: 0 0 10px rgba(248,181,0,0.5); }
-        #chat-box { height: 170px; overflow-y: scroll; background: #050505; text-align: left; padding: 12px; border-radius: 12px; border: 1px solid rgba(212,175,55,0.3); margin-bottom: 10px; }
-        .msg { font-size: 13px; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 6px; word-break: break-word; }
+        
+        /* KHUNG CHAT ĐÃ SỬA LỖI CHỮ BỊ ĐEN */
+        #chat-box { height: 170px; overflow-y: scroll; background: #050505; text-align: left; padding: 12px; border-radius: 12px; border: 1px solid rgba(212,175,55,0.3); margin-bottom: 10px; color: #fff; }
+        .msg { font-size: 13px; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 6px; word-break: break-word; color: #ddd; }
         .msg b { color: #f8b500; }
+        
+        #firework-screen {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 99999; justify-content: center; align-items: center; flex-direction: column;
+            overflow: hidden;
+        }
+        #giant-number {
+            font-size: 100px; font-weight: 900; color: #f8b500;
+            text-shadow: 0 0 30px #ff3333, 0 0 60px #f8b500;
+            animation: pulseNum 1s infinite alternate;
+        }
+        @keyframes pulseNum {
+            0% { transform: scale(0.9); opacity: 0.8; }
+            100% { transform: scale(1.1); opacity: 1; }
+        }
+        canvas { display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+
         #modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 9999; justify-content: center; align-items: center; }
         .modal-content { background: #0a0a0a; padding: 25px; border-radius: 20px; border: 2px solid #f8b500; width: 85%; max-width: 320px; box-shadow: 0 0 30px rgba(248,181,0,0.3); }
-        #music-btn { position: fixed; bottom: 20px; right: 20px; z-index: 99; background: linear-gradient(135deg, #f8b500, #d4af37); color: #000; border: none; padding: 12px 20px; border-radius: 30px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(248,181,0,0.4); }
+        
+        /* CỐ ĐỊNH NÚT NHẠC GÓC DƯỚI BÊN PHẢI KHÔNG BỊ ĐÈ */
+        #music-btn { position: fixed; bottom: 20px; right: 20px; z-index: 9999; background: linear-gradient(135deg, #f8b500, #d4af37); color: #000; border: none; padding: 12px 20px; border-radius: 30px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 20px rgba(248,181,0,0.6); }
     </style>
 </head>
 <body>
@@ -147,6 +167,7 @@ HTML_CODE = """<!DOCTYPE html>
 
     <div class="card">
         <div class="timer" id="timer">Đang tải thời gian...</div>
+        <button class="btn" onclick="startFireworksTest()" style="margin-top:12px; background: linear-gradient(135deg, #ff3333, #ff6b81); color:#fff;">⚡ Thử Đêm Giao Thừa (3 Giây)</button>
     </div>
 
     <div class="card">
@@ -172,6 +193,11 @@ HTML_CODE = """<!DOCTYPE html>
         </div>
     </div>
 
+    <div id="firework-screen">
+        <div id="giant-number">3</div>
+        <canvas id="fireworkCanvas"></canvas>
+    </div>
+
     <div id="modal">
         <div class="modal-content">
             <h3 style="color:#f8b500; margin-top:0;">🔒 Đăng Nhập Admin</h3>
@@ -182,7 +208,7 @@ HTML_CODE = """<!DOCTYPE html>
         </div>
     </div>
 
-    <iframe id="yt" width="0" height="0" src="https://www.youtube.com/embed/n8l_j0UKT3Y?autoplay=1&loop=1&playlist=n8l_j0UKT3Y" frameborder="0" allow="autoplay"></iframe>
+    <div id="player-container"></div>
     <button onclick="toggleMusic()" id="music-btn">🎵 Tắt Nhạc Tết</button>
 
     <script>
@@ -197,13 +223,125 @@ HTML_CODE = """<!DOCTYPE html>
                 const secs = Math.floor((d % (1000 * 60)) / 1000);
                 document.getElementById("timer").innerHTML = `${days} Ngày ${hours} Giờ ${mins} Phút ${secs} Giây`;
             } else {
-                document.getElementById("timer").innerHTML = "🎉 CHÚC MỪNG NĂM MỚI 2027 🎉";
+                startFireworksTest();
             }
         }, 1000);
 
+        function startFireworksTest() {
+            const screen = document.getElementById("firework-screen");
+            const numEl = document.getElementById("giant-number");
+            screen.style.display = "flex";
+            
+            let count = 3;
+            numEl.innerText = count;
+            
+            const countdownInterval = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    numEl.innerText = count;
+                } else if (count === 0) {
+                    numEl.innerText = "🎉 BÙM 🎉";
+                } else {
+                    clearInterval(countdownInterval);
+                    numEl.innerText = "";
+                    initFireworksCanvas();
+                }
+            }, 1000);
+        }
+
+        function initFireworksCanvas() {
+            const canvas = document.getElementById("fireworkCanvas");
+            const ctx = canvas.getContext("2d");
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            class Firework {
+                constructor() {
+                    this.x = Math.random() * canvas.width;
+                    this.y = canvas.height;
+                    this.sx = this.x;
+                    this.sy = canvas.height;
+                    this.tx = Math.random() * canvas.width;
+                    this.ty = Math.random() * (canvas.height / 2);
+                    this.angle = Math.atan2(this.ty - this.sy, this.tx - this.sx);
+                    this.speed = 4;
+                    this.particles = [];
+                    this.exploded = false;
+                }
+                update() {
+                    if (!this.exploded) {
+                        this.x += Math.cos(this.angle) * this.speed;
+                        this.y += Math.sin(this.angle) * this.speed;
+                        if (Math.hypot(this.x - this.sx, this.y - this.sy) >= Math.hypot(this.tx - this.sx, this.ty - this.sy)) {
+                            this.exploded = true;
+                            for (let i = 0; i < 80; i++) {
+                                this.particles.push(new Particle(this.tx, this.ty));
+                            }
+                        }
+                    }
+                    this.particles.forEach((p, index) => {
+                        p.update();
+                        if (p.alpha <= 0) this.particles.splice(index, 1);
+                    });
+                }
+                draw() {
+                    if (!this.exploded) {
+                        ctx.fillStyle = "#f8b500";
+                        ctx.fillRect(this.x, this.y, 3, 3);
+                    }
+                    this.particles.forEach(p => p.draw());
+                }
+            }
+
+            class Particle {
+                constructor(x, y) {
+                    this.x = x;
+                    this.y = y;
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = Math.random() * 6;
+                    this.vx = Math.cos(angle) * speed;
+                    this.vy = Math.sin(angle) * speed;
+                    this.alpha = 1;
+                    this.decay = Math.random() * 0.015 + 0.010;
+                    this.color = `hsl(${Math.random() * 360}, 100%, 60%)`;
+                }
+                update() {
+                    this.x += this.vx;
+                    this.y += this.vy;
+                    this.vy += 0.05;
+                    this.alpha -= this.decay;
+                }
+                draw() {
+                    ctx.save();
+                    ctx.globalAlpha = this.alpha;
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, 2.5, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            }
+
+            let fireworks = [];
+            function loop() {
+                ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                if (Math.random() < 0.08) fireworks.push(new Firework());
+                fireworks.forEach((fw, index) => {
+                    fw.update();
+                    fw.draw();
+                    if (fw.exploded && fw.particles.length === 0) fireworks.splice(index, 1);
+                });
+                requestAnimationFrame(loop);
+            }
+            loop();
+        }
+
         let count = 0, t = null;
         async function login() {
-            const res = await fetch('/api/login', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:document.getElementById('u').value, password:document.getElementById('p').value})});
+            const uVal = document.getElementById('u').value;
+            const pVal = document.getElementById('p').value;
+            const res = await fetch('/api/login', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username: uVal, password: pVal})});
             const data = await res.json();
             if(data.success) {
                 document.getElementById('auth-box').style.display = 'none';
@@ -251,10 +389,17 @@ HTML_CODE = """<!DOCTYPE html>
 
         let play = true;
         function toggleMusic() {
-            const yt = document.getElementById('yt');
+            const container = document.getElementById('player-container');
             const btn = document.getElementById('music-btn');
-            if(play) { yt.src = ''; btn.innerText = '🎵 Bật Nhạc Tết'; play = false; }
-            else { yt.src = 'https://www.youtube.com/embed/n8l_j0UKT3Y?autoplay=1&loop=1&playlist=n8l_j0UKT3Y'; btn.innerText = '🎵 Tắt Nhạc Tết'; play = true; }
+            if(play) { 
+                container.innerHTML = ''; 
+                btn.innerText = '🎵 Bật Nhạc Tết'; 
+                play = false; 
+            } else { 
+                container.innerHTML = '<iframe width="0" height="0" src="https://www.youtube.com/embed/n8l_j0UKT3Y?autoplay=1&loop=1&playlist=n8l_j0UKT3Y" frameborder="0" allow="autoplay"></iframe>'; 
+                btn.innerText = '🎵 Tắt Nhạc Tết'; 
+                play = true; 
+            }
         }
     </script>
 </body>
@@ -270,6 +415,7 @@ ADMIN_HTML = """<!DOCTYPE html>
     th { background:#d4af37; color:#000; font-weight:bold; }
     .card { background:#0a0a0a; padding:20px; border-radius:12px; border:1px solid #d4af37; box-shadow: 0 0 15px rgba(248,181,0,0.2); }
     a { color:#f8b500; font-weight:bold; text-decoration:none; }
+    .btn-test { background: #ff3333; color: #fff; padding: 10px 15px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; text-decoration: none; display: inline-block; margin-top: 10px; }
 </style>
 </head>
 <body>
@@ -277,6 +423,10 @@ ADMIN_HTML = """<!DOCTYPE html>
         <h2>📊 Quản Trị Hệ Thống - Admin Dũng</h2>
         <p>Tổng tin nhắn chat: <b>{{ msg_count }} / 1000</b></p>
         <p><a href="/">⬅ Về trang chủ</a></p>
+        <hr style="border-color:#333; margin:15px 0;">
+        <h3 style="color:#fff; margin-top:0;">⚡ Chức Năng Thử Nghiệm Admin</h3>
+        <p>Admin có thể bấm nút dưới đây để test ngay hiệu ứng đếm ngược 3 giây và màn hình pháo hoa rực rỡ:</p>
+        <a href="/" class="btn-test" target="_blank">🚀 Mở Trang Chủ Để Test Pháo Hoa</a>
     </div>
     <h3 style="color:#fff; margin-top:20px;">Danh sách người dùng & Chuỗi điểm danh</h3>
     <table>
