@@ -7,9 +7,10 @@ app.config['SECRET_KEY'] = 'tet_dinh_mui_2027_dungdepzai_secret'
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # --- DATABASE TẠM TRÊN RAM ---
-users_db = {}       # Lưu thông tin user, mật khẩu, streak điểm danh
-messages_db = []    # Khung chứa tối đa 1000 tin nhắn chat
-ADMIN_PASS = "admin123" # Mật khẩu vào trang quản trị của ông
+users_db = {}       
+messages_db = []    
+ADMIN_USER = "dunghoet"
+ADMIN_PASS = "10091990dung"
 
 @app.route('/')
 def home():
@@ -48,24 +49,19 @@ def checkin():
     udata["last_checkin"] = today
     return jsonify({"success": True, "msg": f"Điểm danh thành công! Chuỗi Streak: {udata['streak']} ngày 🔥", "streak": udata['streak']})
 
-# --- TRANG ADMIN QUẢN LÝ ---
-@app.route('/admin', methods=['GET', 'POST'])
+# --- ĐĂNG NHẬP ADMIN BẰNG TÀI KHOẢN YÊU CẦU ---
+@app.route('/admin-login', methods=['POST'])
+def admin_login():
+    data = request.json
+    if data.get('username') == ADMIN_USER and data.get('password') == ADMIN_PASS:
+        session['is_admin'] = True
+        return jsonify({"success": True})
+    return jsonify({"success": False, "msg": "Sai tài khoản hoặc mật khẩu Admin rồi!"})
+
+@app.route('/admin', methods=['GET'])
 def admin():
-    if request.method == 'POST':
-        if request.form.get('admin_pass') == ADMIN_PASS:
-            session['is_admin'] = True
-    
     if not session.get('is_admin'):
-        return '''
-            <div style="background:#1a1a2e; color:#fff; height:100vh; display:flex; justify-content:center; align-items:center; font-family:sans-serif;">
-                <form method="post" style="background:#16213e; padding:30px; border-radius:12px; text-align:center; box-shadow:0 4px 15px rgba(0,0,0,0.5); border: 1px solid #e94560;">
-                    <h2>🔒 Khu Vực Cấm Địa - Admin Dũng</h2>
-                    <input type="password" name="admin_pass" placeholder="Nhập mật khẩu Admin" style="padding:10px; border-radius:6px; border:1px solid #e94560; background:#0f3460; color:#fff; margin-right:5px;" required>
-                    <button type="submit" style="padding:10px 15px; background:#e94560; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:bold;">Vào</button>
-                </form>
-            </div>
-        '''
-    
+        return "<h3>Truy cập bị từ chối! Hãy bấm 10 lần vào nút điểm danh ngoài trang chủ để đăng nhập.</h3>", 403
     return render_template_string(ADMIN_TEMPLATE, users=users_db, msg_count=len(messages_db))
 
 # --- REALTIME CHAT (TỰ ĐỘNG XÓA 500 TIN KHI ĐẠT 1000) ---
@@ -88,7 +84,7 @@ def handle_connect():
     emit('load_history', messages_db)
 
 
-# --- GIAO DIỆN CHÍNH (HTML + CSS + SVG ICON TỰ VẼ) ---
+# --- GIAO DIỆN SIÊU ĐẸP CHỦ ĐỀ TẾT (GLASSMORPHISM + HOA MAI ĐỎ VÀNG) ---
 FULL_HTML_TEMPLATE = '''
 <!DOCTYPE html>
 <html lang="vi">
@@ -98,87 +94,377 @@ FULL_HTML_TEMPLATE = '''
     <title>Đếm Ngược Tết 2027 - Dũng Đẹp Trai</title>
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1a1a2e; color: #fff; text-align: center; margin: 0; padding: 15px; }
-        .box { background: #16213e; border-radius: 12px; padding: 20px; margin: 15px auto; max-width: 450px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); border: 1px solid #1f4068; }
-        h1 { color: #e94560; font-size: 20px; display: flex; align-items: center; justify-content: center; gap: 8px; }
-        #timer { font-size: 22px; font-weight: bold; color: #f8b500; margin: 10px 0; text-shadow: 0 0 10px rgba(248,181,0,0.3); }
-        input, button { padding: 10px; margin: 5px; border-radius: 6px; border: none; font-size: 14px; }
-        input { background: #0f3460; color: #fff; border: 1px solid #e94560; width: calc(100% - 24px); max-width: 300px; outline: none; }
-        button { background: #e94560; color: white; cursor: pointer; font-weight: bold; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
-        button:hover { background: #ff6b81; transform: translateY(-1px); }
-        #chat-box { height: 200px; overflow-y: scroll; background: #0f3460; text-align: left; padding: 10px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #1f4068; }
-        .msg { margin-bottom: 8px; border-bottom: 1px solid #16213e; padding-bottom: 4px; font-size: 14px; word-break: break-word; }
-        .msg b { color: #f8b500; }
-        
-        /* NÚT NHẠC NỔI GÓC MÀN HÌNH VỚI ICON VECTOR */
-        #music-btn { 
-            position: fixed; bottom: 20px; right: 20px; z-index: 999; 
-            background: linear-gradient(135deg, #e94560, #ff6b81); 
-            color: white; border: none; padding: 12px 20px; border-radius: 50px; 
-            cursor: pointer; font-weight: bold; box-shadow: 0 4px 20px rgba(233,69,96,0.5); 
-            display: flex; align-items: center; gap: 8px; font-size: 14px;
+        :root {
+            --bg-tet: linear-gradient(135deg, #2b0909 0%, #1a0202 50%, #0f0101 100%);
+            --card-bg: rgba(26, 33, 62, 0.75);
+            --border-tet: rgba(248, 181, 0, 0.3);
+            --gold: #f8b500;
+            --red-tet: #e94560;
+        }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: var(--bg-tet); 
+            background-attachment: fixed;
+            color: #fff; 
+            text-align: center; 
+            margin: 0; 
+            padding: 15px; 
+            overflow-x: hidden;
         }
         
-        /* HIỆU ỨNG SÓNG NHẠC NHẢY MÚA KHI PHÁT */
-        .wave-bar { display: inline-block; width: 3px; height: 12px; background: #fff; animation: wave 0.8s infinite ease-in-out; }
+        /* HIỆU ỨNG TẾT: HOA MAI RƠI / ĐÈN LỒNG */
+        .tet-header {
+            background: linear-gradient(90deg, #ff2a2a, #ff9900, #ff2a2a);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 22px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+            text-shadow: 0 0 20px rgba(255,42,42,0.5);
+        }
+        
+        .badge-brand {
+            display: inline-block;
+            background: linear-gradient(135deg, #f8b500, #ff6b81);
+            color: #1a0202;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 12px;
+            margin-bottom: 12px;
+            box-shadow: 0 0 10px rgba(248,181,0,0.5);
+        }
+
+        .box { 
+            background: var(--card-bg); 
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 16px; 
+            padding: 20px; 
+            margin: 15px auto; 
+            max-width: 450px; 
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5); 
+            border: 1px solid var(--border-tet); 
+        }
+
+        #timer { 
+            font-size: 20px; 
+            font-weight: bold; 
+            color: var(--gold); 
+            margin: 10px 0; 
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
+            border-radius: 10px;
+            border: 1px dashed var(--gold);
+        }
+
+        input { 
+            background: rgba(15, 52, 96, 0.8); 
+            color: #fff; 
+            border: 1px solid var(--red-tet); 
+            width: calc(100% - 24px); 
+            max-width: 320px; 
+            padding: 12px;
+            margin: 6px 0;
+            border-radius: 8px;
+            outline: none;
+            font-size: 14px;
+        }
+        input:focus { border-color: var(--gold); box-shadow: 0 0 8px rgba(248,181,0,0.4); }
+
+        button { 
+            background: linear-gradient(135deg, #e94560, #ff6b81); 
+            color: white; 
+            cursor: pointer; 
+            font-weight: bold; 
+            padding: 12px 20px;
+            margin: 6px 0;
+            border-radius: 8px;
+            border: none;
+            font-size: 14px;
+            transition: 0.3s;
+            box-shadow: 0 4px 15px rgba(233,69,96,0.4);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        button:hover { transform: translateY(-2px); filter: brightness(1.1); }
+
+        #chat-box { 
+            height: 220px; 
+            overflow-y: scroll; 
+            background: rgba(10, 25, 47, 0.9); 
+            text-align: left; 
+            padding: 12px; 
+            border-radius: 10px; 
+            margin-bottom: 12px; 
+            border: 1px solid rgba(233,69,96,0.3); 
+        }
+        .msg { margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 6px; font-size: 13px; word-break: break-word; }
+        .msg b { color: var(--gold); }
+
+        /* NÚT NHẠC NỔI GÓC MÀN HÌNH */
+        #music-btn { 
+            position: fixed; bottom: 20px; right: 20px; z-index: 999; 
+            background: linear-gradient(135deg, #f8b500, #ff6b81); 
+            color: #1a0202; border: none; padding: 12px 18px; border-radius: 50px; 
+            cursor: pointer; font-weight: bold; box-shadow: 0 4px 20px rgba(248,181,0,0.5); 
+            display: flex; align-items: center; gap: 8px; font-size: 13px;
+        }
+        
+        .wave-bar { display: inline-block; width: 3px; height: 12px; background: #1a0202; animation: wave 0.8s infinite ease-in-out; }
         .wave-bar:nth-child(2) { animation-delay: 0.2s; height: 18px; }
         .wave-bar:nth-child(3) { animation-delay: 0.4s; height: 8px; }
         @keyframes wave { 0%, 100% { transform: scaleY(0.4); } 50% { transform: scaleY(1); } }
+
+        /* MODAL ĐĂNG NHẬP ADMIN BÍ MẬT */
+        #admin-modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center;
+        }
+        .modal-content {
+            background: #16213e; padding: 25px; border-radius: 16px; border: 2px solid var(--gold);
+            width: 90%; max-width: 350px; text-align: center; box-shadow: 0 0 30px rgba(248,181,0,0.4);
+        }
     </style>
 </head>
 <body>
 
-    <!-- TIÊU ĐỀ KÈM ICON PHÁO HOA TỰ VẼ (SVG) -->
-    <h1>
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#e94560" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
-        ĐẾM NGƯỢC TẾT ĐÌNH MÙI 2027
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#e94560" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
-    </h1>
-    <div style="color: #f8b500; font-weight: bold; margin-bottom: 5px; font-size: 14px;">👑 THƯƠNG HIỆU ĐỘC QUYỀN: DŨNG ĐẸP TRAI 👑</div>
-    <div id="timer">Đang tính thời gian...</div>
+    <div class="tet-header">🧨 ĐẾM NGƯỢC TẾT ĐÌNH MÙI 2027 🧨</div>
+    <div class="badge-brand">👑 THƯƠNG HIỆU ĐỘC QUYỀN: DŨNG ĐẸP TRAI 👑</div>
+    <div id="timer">Đang tải thời gian...</div>
 
     <!-- KHU VỰC ĐĂNG NHẬP / ĐIỂM DANH -->
     <div class="box">
         <div id="auth-section">
-            <h3>🔑 Đăng ký / Đăng nhập</h3>
+            <h3 style="color:var(--gold)">🔑 Đăng ký / Đăng nhập</h3>
             <input type="text" id="username" placeholder="Tên tài khoản của ông"><br>
             <input type="password" id="password" placeholder="Mật khẩu"><br>
-            <button onclick="login()">
-                <!-- Icon Khóa Mở -->
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                Vào Web Ngay
-            </button>
+            <button onclick="login()">Vào Web Ngay</button>
         </div>
         <div id="user-section" style="display:none;">
-            <h2>Chào ông, <span id="user-display" style="color:#f8b500;"></span>! 😎</h2>
-            <p>🔥 Chuỗi điểm danh: <b id="streak-display" style="color:#e94560; font-size:18px;">0</b> ngày</p>
-            <button onclick="checkin()">
-                <!-- Icon Ngọn Lửa Checkin -->
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.5 4 6.5 2 2 3 4 3 6.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>
-                Điểm Danh Hôm Nay
-            </button>
+            <h2 style="margin:5px 0;">Chào ông, <span id="user-display" style="color:var(--gold);"></span>! 😎</h2>
+            <p style="margin:8px 0;">🔥 Chuỗi điểm danh: <b id="streak-display" style="color:var(--red-tet); font-size:20px;">0</b> ngày</p>
+            <!-- NÚT ĐIỂM DANH: ẤM 10 LẦN ĐỂ MỞ ADMIN -->
+            <button id="checkin-btn" onclick="handleCheckinClick()">Điểm Danh Hôm Nay</button>
         </div>
     </div>
 
     <!-- KHU VỰC CHAT REALTIME -->
     <div class="box">
-        <h3>💬 Khung Chat Cộng Đồng</h3>
+        <h3 style="color:var(--gold); margin-top:0;">💬 Khung Chat Cộng Đồng</h3>
         <div id="chat-box"></div>
-        <input type="text" id="msg-input" placeholder="Nhập tin nhắn..." style="width: 60%; display: inline-block;">
-        <button onclick="sendMsg()" style="width: 28%; display: inline-block;">
-            <!-- Icon Máy Bay Gửi Tin Nhắn -->
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-            Gửi
-        </button>
+        <div style="display: flex; gap: 5px;">
+            <input type="text" id="msg-input" placeholder="Nhập tin nhắn..." style="flex: 1; margin:0;">
+            <button onclick="sendMsg()" style="margin:0; padding: 0 15px;">Gửi</button>
+        </div>
     </div>
 
-    <!-- KHUNG NHẠC YOUTUBE XUYÊN TẾT (BÀI 7 TIẾNG) -->
+    <!-- MODAL ĐĂNG NHẬP ADMIN BÍ MẬT -->
+    <div id="admin-modal">
+        <div class="modal-content">
+            <h3 style="color:var(--red-tet)">🔒 Đăng Nhập Cấm Địa Admin</h3>
+            <input type="text" id="admin-user" placeholder="Tài khoản Admin"><br>
+            <input type="password" id="admin-pass" placeholder="Mật khẩu Admin"><br><br>
+            <button onclick="submitAdminLogin()" style="width:100%">Đăng Nhập Quản Trị</button>
+            <button onclick="closeAdminModal()" style="background:#555; width:100%; margin-top:5px;">Đóng</button>
+        </div>
+    </div>
+
+    <!-- KHUNG NHẠC YOUTUBE -->
     <iframe id="youtube-audio" width="0" height="0" src="https://www.youtube.com/embed/n8l_j0UKT3Y?autoplay=1&loop=1&playlist=n8l_j0UKT3Y" frameborder="0" allow="autoplay"></iframe>
     
-    <!-- NÚT NHẠC VỚI SÓNG NHẠC VECTOR ĐỘC QUYỀN -->
     <button onclick="toggleYtMusic()" id="music-btn">
         <span id="music-icon" style="display:flex; align-items:center; gap:2px;">
             <span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span>
+        </span>
+        <span id="music-text">Nhạc Tết 2027</span>
+    </button>
+
+    <script>
+        // --- 1. ĐẾM NGƯỢC TẾT 2027 ---
+        const tetDate = new Date("Jan 29, 2027 00:00:00").getTime();
+        setInterval(() => {
+            const now = new Date().getTime();
+            const distance = tetDate - now;
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+            document.getElementById("timer").innerHTML = `${days} Ngày ${hours} Giờ ${minutes} Phút ${seconds} Giây`;
+        }, 1000);
+
+        // --- 2. LOGIN & CHECK-IN & BÍ MẬT 10 LẦN MỞ ADMIN ---
+        let checkinClickCount = 0;
+        let clickTimer = null;
+
+        async function login() {
+            const u = document.getElementById("username").value;
+            const p = document.getElementById("password").value;
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username: u, password: p})
+            });
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById("auth-section").style.display = "none";
+                document.getElementById("user-section").style.display = "block";
+                document.getElementById("user-display").innerText = data.username;
+                document.getElementById("streak-display").innerText = data.user_data.streak;
+            } else {
+                alert(data.msg);
+            }
+        }
+
+        async function handleCheckinClick() {
+            // Đếm số lần bấm liên tục trong vòng 3 giây để mở Admin
+            checkinClickCount++;
+            clearTimeout(clickTimer);
+            
+            if (checkinClickCount >= 10) {
+                checkinClickCount = 0;
+                document.getElementById("admin-modal").style.display = "flex";
+                return;
+            }
+            
+            clickTimer = setTimeout(() => {
+                checkinClickCount = 0;
+            }, 3000);
+
+            // Gọi hàm điểm danh thực tế
+            const res = await fetch('/api/checkin', {method: 'POST'});
+            const data = await res.json();
+            alert(data.msg);
+            if(data.success) document.getElementById("streak-display").innerText = data.streak;
+        }
+
+        function closeAdminModal() {
+            document.getElementById("admin-modal").style.display = "none";
+        }
+
+        async function submitAdminLogin() {
+            const u = document.getElementById("admin-user").value;
+            const p = document.getElementById("admin-pass").value;
+            const res = await fetch('/admin-login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username: u, password: p})
+            });
+            const data = await res.json();
+            if (data.success) {
+                window.location.href = '/admin';
+            } else {
+                alert(data.msg);
+            }
+        }
+
+        // --- 3. CHAT REALTIME ---
+        const socket = io();
+        const chatBox = document.getElementById("chat-box");
+
+        socket.on('load_history', (msgs) => {
+            chatBox.innerHTML = "";
+            msgs.forEach(m => appendMsg(m));
+        });
+
+        socket.on('receive_message', (m) => {
+            appendMsg(m);
+        });
+
+        function sendMsg() {
+            const input = document.getElementById("msg-input");
+            if(input.value.trim() !== "") {
+                socket.emit('send_message', {message: input.value});
+                input.value = "";
+            }
+        }
+
+        document.getElementById("msg-input").addEventListener("keypress", function(event) {
+            if (event.key === "Enter") { sendMsg(); }
+        });
+
+        function appendMsg(m) {
+            const div = document.createElement("div");
+            div.className = "msg";
+            div.innerHTML = `<b>[${m.time}] ${m.user}:</b> ${m.text}`;
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        // --- 4. ĐIỀU KHIỂN NHẠC YOUTUBE ---
+        let ytPlaying = true;
+        const videoId = "n8l_j0UKT3Y"; 
+        const mText = document.getElementById("music-text");
+        const mIcon = document.getElementById("music-icon");
+        
+        function toggleYtMusic() {
+            const iframe = document.getElementById("youtube-audio");
+            if (ytPlaying) {
+                iframe.src = ""; 
+                mText.innerHTML = "Tắt nhạc";
+                mIcon.innerHTML = '▶';
+                ytPlaying = false;
+            } else {
+                iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&loop=1&playlist=${videoId}`;
+                mText.innerHTML = "Nhạc Tết 2027";
+                mIcon.innerHTML = '<span class="wave-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span>';
+                ytPlaying = true;
+            }
+        }
+    </script>
+</body>
+</html>
+'''
+
+# --- GIAO DIỆN TRANG ADMIN ---
+ADMIN_TEMPLATE = '''
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Admin - Dũng Đẹp Trai</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #1a1a2e; color: #fff; }
+        table { width: 100%; border-collapse: collapse; background: #16213e; margin-top: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); border-radius: 8px; overflow: hidden; }
+        th, td { border: 1px solid #1f4068; padding: 12px; text-align: left; }
+        th { background: #e94560; color: white; }
+        .card { background: #16213e; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); border: 1px solid #e94560; }
+        a { color: #f8b500; text-decoration: none; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>📊 Bảng Quản Trị Hệ Thống - Admin Dũng</h2>
+        <p>Bộ nhớ tin nhắn hiện tại: <b>{{ msg_count }} / 1000 tin</b> (Đạt 1000 tự động xóa 500 tin cũ)</p>
+        <p><a href="/">⬅ Quay lại trang chủ</a></p>
+    </div>
+    
+    <h3 style="margin-top:20px;">Danh sách người dùng & Điểm danh</h3>
+    <table>
+        <tr>
+            <th>Tài khoản</th>
+            <th>Chuỗi Streak</th>
+            <th>Ngày điểm danh gần nhất</th>
+        </tr>
+        {% for user, data in users.items() %}
+        <tr>
+            <td><b>{{ user }}</b></td>
+            <td>{{ data.streak }} ngày 🔥</td>
+            <td>{{ data.last_checkin or 'Chưa điểm danh' }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>
+'''
+
+if __name__ == '__main__':
+    socketio.run(app, host='0.0.0.0', port=5000)
+e-bar"></span><span class="wave-bar"></span><span class="wave-bar"></span>
         </span>
         <span id="music-text">Đang phát Nhạc Tết</span>
     </button>
