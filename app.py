@@ -15,33 +15,27 @@ ADMIN_PASS = "10091990dung"
 def home():
     return render_template_string(HTML_CODE)
 
-# --- API CẬP NHẬT / LẤY DỮ LIỆU RIÊNG CHO TỪNG TÊN ---
 @app.route('/api/user-sync', methods=['POST'])
 def user_sync():
     data = request.json or {}
     name = data.get('username', '').strip()
     if not name:
         return jsonify({"success": False, "msg": "Tên không được để trống!"})
-    
     if name not in users_db:
         users_db[name] = {"streak": 0, "last_checkin": None}
-    
     return jsonify({"success": True, "user_data": users_db[name]})
 
-# --- API ĐIỂM DANH RIÊNG BIỆT ---
 @app.route('/api/checkin', methods=['POST'])
 def checkin():
     data = request.json or {}
     name = data.get('username', '').strip()
     if not name:
         return jsonify({"success": False, "msg": "Chưa có tên người dùng!"})
-    
     if name not in users_db:
         users_db[name] = {"streak": 0, "last_checkin": None}
 
     today = str(datetime.date.today())
     udata = users_db[name]
-    
     if udata["last_checkin"] == today:
         return jsonify({"success": False, "msg": "Hôm nay ông đã điểm danh rồi, mai vào lại nhé!", "streak": udata['streak']})
     
@@ -58,7 +52,6 @@ def admin_login():
 
 @app.route('/admin')
 def admin():
-    # Sắp xếp danh sách người dùng theo streak giảm dần cho Bảng xếp hạng
     sorted_users = sorted(users_db.items(), key=lambda x: x[1]['streak'], reverse=True)
     return render_template_string(ADMIN_HTML, users=sorted_users, msg_count=len(messages_db))
 
@@ -147,7 +140,6 @@ HTML_CODE = """<!DOCTYPE html>
         <div class="timer" id="timer">Đang tải thời gian...</div>
     </div>
 
-    <!-- KHU VỰC NHẬP TÊN VÀ ĐIỂM DANH TRỰC TIẾP -->
     <div class="card">
         <div id="name-box">
             <h3 style="color:#f8b500; margin-top:0;">👑 Nhập Tên Của Bạn</h3>
@@ -197,6 +189,10 @@ HTML_CODE = """<!DOCTYPE html>
             if (currentName) {
                 syncUser(currentName);
             }
+            // Kích hoạt trước tổng hợp giọng nói để trình duyệt không bị đứng
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.getVoices();
+            }
         };
 
         async function enterWeb() {
@@ -243,8 +239,11 @@ HTML_CODE = """<!DOCTYPE html>
 
         function speakText(text) {
             if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel(); // Dừng các lệnh đọc cũ nếu có
                 const utterance = new SpeechSynthesisUtterance(text);
                 utterance.lang = 'vi-VN';
+                utterance.rate = 1.0;
+                utterance.pitch = 1.0;
                 window.speechSynthesis.speak(utterance);
             }
         }
@@ -256,6 +255,7 @@ HTML_CODE = """<!DOCTYPE html>
             let count = 3;
             numEl.innerText = count;
             speakText("3");
+            
             const countdownInterval = setInterval(() => {
                 count--;
                 if (count > 0) { 
@@ -349,7 +349,7 @@ ADMIN_HTML = """<!DOCTYPE html>
         <p><a href="/">⬅ Về trang chủ</a></p>
         <hr style="border-color:#333; margin:15px 0;">
         <h3 style="color:#fff; margin-top:0;">⚡ Khu Vực Thử Nghiệm Pháo Hoa & Giọng Đọc (Chỉ Admin)</h3>
-        <p>Bấm nút dưới đây để test trực tiếp hiệu ứng giọng đọc đếm ngược 3 giây và pháo hoa rực rỡ:</p>
+        <p>Bấm nút dưới đây để test trực tiếp hiệu ứng giọng đọc tiếng Việt 3 giây và pháo hoa rực rỡ:</p>
         <button class="btn-test" onclick="triggerVoiceFireworks()">🚀 Kích Hoạt Test Giao Thừa Ngay</button>
     </div>
 
@@ -374,8 +374,10 @@ ADMIN_HTML = """<!DOCTYPE html>
     <script>
         function speakText(text) {
             if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
                 const utterance = new SpeechSynthesisUtterance(text);
                 utterance.lang = 'vi-VN';
+                utterance.rate = 1.0;
                 window.speechSynthesis.speak(utterance);
             }
         }
