@@ -15,17 +15,31 @@ ADMIN_PASS = "10091990dung"
 def home():
     return render_template_string(HTML_CODE)
 
+# --- API ĐĂNG KÝ TÀI KHOẢN ---
+@app.route('/api/register', methods=['POST'])
+def register():
+    data = request.json or {}
+    u = data.get('username', '').strip()
+    p = data.get('password', '').strip()
+    if not u or not p:
+        return jsonify({"success": False, "msg": "Vui lòng nhập đầy đủ thông tin để đăng ký!"})
+    if u in users_db:
+        return jsonify({"success": False, "msg": "Tài khoản này đã tồn tại, hãy chọn tên khác hoặc đăng nhập!"})
+    
+    users_db[u] = {"password": p, "streak": 0, "last_checkin": None}
+    return jsonify({"success": True, "msg": "Đăng ký thành công! Hãy chuyển sang phần Đăng nhập."})
+
+# --- API ĐĂNG NHẬP ---
 @app.route('/api/login', methods=['POST'])
 def login():
     data = request.json or {}
     u = data.get('username', '').strip()
     p = data.get('password', '').strip()
     if not u or not p:
-        return jsonify({"success": False, "msg": "Vui lòng nhập đầy đủ tài khoản và mật khẩu!"})
-    if u not in users_db:
-        users_db[u] = {"password": p, "streak": 0, "last_checkin": None}
-    elif users_db[u]["password"] != p:
-        return jsonify({"success": False, "msg": "Sai mật khẩu rồi ông giáo ơi!"})
+        return jsonify({"success": False, "msg": "Vui lòng nhập tài khoản và mật khẩu!"})
+    if u not in users_db or users_db[u]["password"] != p:
+        return jsonify({"success": False, "msg": "Sai tài khoản hoặc mật khẩu rồi!"})
+    
     session['user'] = u
     return jsonify({"success": True, "username": u, "user_data": users_db[u]})
 
@@ -50,11 +64,15 @@ def admin_login():
         return jsonify({"success": True})
     return jsonify({"success": False, "msg": "Sai tài khoản hoặc mật khẩu Admin!"})
 
+# --- TRANG ADMIN CÓ BẢNG XẾP HẠNG VÀ NÚT TEST PHÁO HOA ---
 @app.route('/admin')
 def admin():
     if not session.get('is_admin'):
         return "<h3>Truy cập bị từ chối! Bấm 10 lần vào nút điểm danh ngoài trang chủ để mở khóa trang quản trị.</h3>", 403
-    return render_template_string(ADMIN_HTML, users=users_db, msg_count=len(messages_db))
+    
+    # Sắp xếp danh sách người dùng theo chuỗi streak giảm dần (Bảng xếp hạng)
+    sorted_users = sorted(users_db.items(), key=lambda x: x[1]['streak'], reverse=True)
+    return render_template_string(ADMIN_HTML, users=sorted_users, msg_count=len(messages_db))
 
 @socketio.on('send_message')
 def handle_message(data):
@@ -132,7 +150,6 @@ HTML_CODE = """<!DOCTYPE html>
         }
         input::placeholder { color: #555; }
         
-        /* KHUNG CHAT ĐÃ SỬA LỖI CHỮ BỊ ĐEN */
         #chat-box { height: 170px; overflow-y: scroll; background: #050505; text-align: left; padding: 12px; border-radius: 12px; border: 1px solid rgba(212,175,55,0.3); margin-bottom: 10px; color: #fff; }
         .msg { font-size: 13px; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 6px; word-break: break-word; color: #ddd; }
         .msg b { color: #f8b500; }
@@ -156,8 +173,8 @@ HTML_CODE = """<!DOCTYPE html>
         #modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 9999; justify-content: center; align-items: center; }
         .modal-content { background: #0a0a0a; padding: 25px; border-radius: 20px; border: 2px solid #f8b500; width: 85%; max-width: 320px; box-shadow: 0 0 30px rgba(248,181,0,0.3); }
         
-        /* CỐ ĐỊNH NÚT NHẠC GÓC DƯỚI BÊN PHẢI KHÔNG BỊ ĐÈ */
         #music-btn { position: fixed; bottom: 20px; right: 20px; z-index: 9999; background: linear-gradient(135deg, #f8b500, #d4af37); color: #000; border: none; padding: 12px 20px; border-radius: 30px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 20px rgba(248,181,0,0.6); }
+        .switch-link { color: #f8b500; cursor: pointer; font-size: 13px; margin-top: 10px; display: inline-block; text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -167,16 +184,29 @@ HTML_CODE = """<!DOCTYPE html>
 
     <div class="card">
         <div class="timer" id="timer">Đang tải thời gian...</div>
-        <button class="btn" onclick="startFireworksTest()" style="margin-top:12px; background: linear-gradient(135deg, #ff3333, #ff6b81); color:#fff;">⚡ Thử Đêm Giao Thừa (3 Giây)</button>
     </div>
 
+    <!-- KHU VỰC ĐĂNG NHẬP / ĐĂNG KÝ CÓ CHUYỂN TAB -->
     <div class="card">
-        <div id="auth-box">
-            <h3 style="color:#f8b500; margin-top:0;">🔑 Đăng Nhập / Đăng Ký</h3>
-            <input type="text" id="u" placeholder="Tên tài khoản"><br>
-            <input type="password" id="p" placeholder="Mật khẩu"><br>
+        <!-- Form Đăng Nhập -->
+        <div id="login-box">
+            <h3 style="color:#f8b500; margin-top:0;">🔑 Đăng Nhập</h3>
+            <input type="text" id="login-u" placeholder="Tên tài khoản"><br>
+            <input type="password" id="login-p" placeholder="Mật khẩu"><br>
             <button class="btn" onclick="login()">Vào Web Ngay</button>
+            <br><span class="switch-link" onclick="showRegister()">Chưa có tài khoản? Đăng ký ngay</span>
         </div>
+
+        <!-- Form Đăng Ký -->
+        <div id="register-box" style="display:none;">
+            <h3 style="color:#f8b500; margin-top:0;">📝 Đăng Ký Tài Khoản</h3>
+            <input type="text" id="reg-u" placeholder="Tên tài khoản mới"><br>
+            <input type="password" id="reg-p" placeholder="Mật khẩu mới"><br>
+            <button class="btn" onclick="register()">Đăng Ký</button>
+            <br><span class="switch-link" onclick="showLogin()">Đã có tài khoản? Đăng nhập</span>
+        </div>
+
+        <!-- Giao diện sau khi vào web -->
         <div id="user-box" style="display:none;">
             <h3 style="color:#f8b500; margin-top:0;">Chào, <span id="uname" style="color:#fff;"></span>! 😎</h3>
             <p style="font-size:15px;">🔥 Streak: <b id="streak" style="color:#ff3333; font-size:18px;">0</b> ngày</p>
@@ -227,21 +257,66 @@ HTML_CODE = """<!DOCTYPE html>
             }
         }, 1000);
 
+        function showRegister() {
+            document.getElementById('login-box').style.display = 'none';
+            document.getElementById('register-box').style.display = 'block';
+        }
+        function showLogin() {
+            document.getElementById('register-box').style.display = 'none';
+            document.getElementById('login-box').style.display = 'block';
+        }
+
+        async function register() {
+            const uVal = document.getElementById('reg-u').value;
+            const pVal = document.getElementById('reg-p').value;
+            const res = await fetch('/api/register', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username: uVal, password: pVal})});
+            const data = await res.json();
+            alert(data.msg);
+            if(data.success) { showLogin(); }
+        }
+
+        async function login() {
+            const uVal = document.getElementById('login-u').value;
+            const pVal = document.getElementById('login-p').value;
+            const res = await fetch('/api/login', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username: uVal, password: pVal})});
+            const data = await res.json();
+            if(data.success) {
+                document.getElementById('login-box').style.display = 'none';
+                document.getElementById('user-box').style.display = 'block';
+                document.getElementById('uname').innerText = data.username;
+                document.getElementById('streak').innerText = data.user_data.streak;
+            } else { alert(data.msg); }
+        }
+
+        let count = 0, t = null;
+        async function checkin() {
+            count++; clearTimeout(t);
+            if(count >= 10) { count = 0; document.getElementById('modal').style.display = 'flex'; return; }
+            t = setTimeout(() => { count = 0; }, 3000);
+
+            const res = await fetch('/api/checkin', {method:'POST'});
+            const data = await res.json();
+            alert(data.msg);
+            if(data.success) document.getElementById('streak').innerText = data.streak;
+        }
+
+        async function adminLogin() {
+            const res = await fetch('/admin-login', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:document.getElementById('au').value, password:document.getElementById('ap').value})});
+            const data = await res.json();
+            if(data.success) { window.location.href = '/admin'; } else { alert(data.msg); }
+        }
+
         function startFireworksTest() {
             const screen = document.getElementById("firework-screen");
             const numEl = document.getElementById("giant-number");
             screen.style.display = "flex";
-            
             let count = 3;
             numEl.innerText = count;
-            
             const countdownInterval = setInterval(() => {
                 count--;
-                if (count > 0) {
-                    numEl.innerText = count;
-                } else if (count === 0) {
-                    numEl.innerText = "🎉 BÙM 🎉";
-                } else {
+                if (count > 0) { numEl.innerText = count; }
+                else if (count === 0) { numEl.innerText = "🎉 BÙM 🎉"; }
+                else {
                     clearInterval(countdownInterval);
                     numEl.innerText = "";
                     initFireworksCanvas();
@@ -259,8 +334,7 @@ HTML_CODE = """<!DOCTYPE html>
                 constructor() {
                     this.x = Math.random() * canvas.width;
                     this.y = canvas.height;
-                    this.sx = this.x;
-                    this.sy = canvas.height;
+                    this.sx = this.x; this.sy = canvas.height;
                     this.tx = Math.random() * canvas.width;
                     this.ty = Math.random() * (canvas.height / 2);
                     this.angle = Math.atan2(this.ty - this.sy, this.tx - this.sx);
@@ -274,9 +348,7 @@ HTML_CODE = """<!DOCTYPE html>
                         this.y += Math.sin(this.angle) * this.speed;
                         if (Math.hypot(this.x - this.sx, this.y - this.sy) >= Math.hypot(this.tx - this.sx, this.ty - this.sy)) {
                             this.exploded = true;
-                            for (let i = 0; i < 80; i++) {
-                                this.particles.push(new Particle(this.tx, this.ty));
-                            }
+                            for (let i = 0; i < 80; i++) { this.particles.push(new Particle(this.tx, this.ty)); }
                         }
                     }
                     this.particles.forEach((p, index) => {
@@ -295,8 +367,7 @@ HTML_CODE = """<!DOCTYPE html>
 
             class Particle {
                 constructor(x, y) {
-                    this.x = x;
-                    this.y = y;
+                    this.x = x; this.y = y;
                     const angle = Math.random() * Math.PI * 2;
                     const speed = Math.random() * 6;
                     this.vx = Math.cos(angle) * speed;
@@ -306,10 +377,8 @@ HTML_CODE = """<!DOCTYPE html>
                     this.color = `hsl(${Math.random() * 360}, 100%, 60%)`;
                 }
                 update() {
-                    this.x += this.vx;
-                    this.y += this.vy;
-                    this.vy += 0.05;
-                    this.alpha -= this.decay;
+                    this.x += this.vx; this.y += this.vy;
+                    this.vy += 0.05; this.alpha -= this.decay;
                 }
                 draw() {
                     ctx.save();
@@ -328,44 +397,12 @@ HTML_CODE = """<!DOCTYPE html>
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 if (Math.random() < 0.08) fireworks.push(new Firework());
                 fireworks.forEach((fw, index) => {
-                    fw.update();
-                    fw.draw();
+                    fw.update(); fw.draw();
                     if (fw.exploded && fw.particles.length === 0) fireworks.splice(index, 1);
                 });
                 requestAnimationFrame(loop);
             }
             loop();
-        }
-
-        let count = 0, t = null;
-        async function login() {
-            const uVal = document.getElementById('u').value;
-            const pVal = document.getElementById('p').value;
-            const res = await fetch('/api/login', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username: uVal, password: pVal})});
-            const data = await res.json();
-            if(data.success) {
-                document.getElementById('auth-box').style.display = 'none';
-                document.getElementById('user-box').style.display = 'block';
-                document.getElementById('uname').innerText = data.username;
-                document.getElementById('streak').innerText = data.user_data.streak;
-            } else { alert(data.msg); }
-        }
-
-        async function checkin() {
-            count++; clearTimeout(t);
-            if(count >= 10) { count = 0; document.getElementById('modal').style.display = 'flex'; return; }
-            t = setTimeout(() => { count = 0; }, 3000);
-
-            const res = await fetch('/api/checkin', {method:'POST'});
-            const data = await res.json();
-            alert(data.msg);
-            if(data.success) document.getElementById('streak').innerText = data.streak;
-        }
-
-        async function adminLogin() {
-            const res = await fetch('/admin-login', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:document.getElementById('au').value, password:document.getElementById('ap').value})});
-            const data = await res.json();
-            if(data.success) { window.location.href = '/admin'; } else { alert(data.msg); }
         }
 
         const socket = io();
@@ -391,15 +428,8 @@ HTML_CODE = """<!DOCTYPE html>
         function toggleMusic() {
             const container = document.getElementById('player-container');
             const btn = document.getElementById('music-btn');
-            if(play) { 
-                container.innerHTML = ''; 
-                btn.innerText = '🎵 Bật Nhạc Tết'; 
-                play = false; 
-            } else { 
-                container.innerHTML = '<iframe width="0" height="0" src="https://www.youtube.com/embed/n8l_j0UKT3Y?autoplay=1&loop=1&playlist=n8l_j0UKT3Y" frameborder="0" allow="autoplay"></iframe>'; 
-                btn.innerText = '🎵 Tắt Nhạc Tết'; 
-                play = true; 
-            }
+            if(play) { container.innerHTML = ''; btn.innerText = '🎵 Bật Nhạc Tết'; play = false; }
+            else { container.innerHTML = '<iframe width="0" height="0" src="https://www.youtube.com/embed/n8l_j0UKT3Y?autoplay=1&loop=1&playlist=n8l_j0UKT3Y" frameborder="0" allow="autoplay"></iframe>'; btn.innerText = '🎵 Tắt Nhạc Tết'; play = true; }
         }
     </script>
 </body>
@@ -420,25 +450,134 @@ ADMIN_HTML = """<!DOCTYPE html>
 </head>
 <body>
     <div class="card">
-        <h2>📊 Quản Trị Hệ Thống - Admin Dũng</h2>
+        <h2>📊 Bảng Quản Trị Hệ Thống - Admin Dũng</h2>
         <p>Tổng tin nhắn chat: <b>{{ msg_count }} / 1000</b></p>
         <p><a href="/">⬅ Về trang chủ</a></p>
         <hr style="border-color:#333; margin:15px 0;">
-        <h3 style="color:#fff; margin-top:0;">⚡ Chức Năng Thử Nghiệm Admin</h3>
-        <p>Admin có thể bấm nút dưới đây để test ngay hiệu ứng đếm ngược 3 giây và màn hình pháo hoa rực rỡ:</p>
-        <a href="/" class="btn-test" target="_blank">🚀 Mở Trang Chủ Để Test Pháo Hoa</a>
+        <h3 style="color:#fff; margin-top:0;">⚡ Khu Vực Thử Nghiệm Pháo Hoa (Chỉ Admin Mới Thấy)</h3>
+        <p>Bấm nút dưới đây để test trực tiếp hiệu ứng đếm ngược 3 giây và màn hình pháo hoa rực rỡ:</p>
+        <button class="btn-test" onclick="triggerFireworks()">🚀 Kích Hoạt Test Pháo Hoa Ngay</button>
     </div>
-    <h3 style="color:#fff; margin-top:20px;">Danh sách người dùng & Chuỗi điểm danh</h3>
+
+    <h3 style="color:#fff; margin-top:25px;">🏆 Bảng Xếp Hạng Điểm Danh (Streak)</h3>
     <table>
-        <tr><th>Tài khoản</th><th>Streak</th><th>Điểm danh gần nhất</th></tr>
-        {% for u, d in users.items() %}
+        <tr><th>Hạng 🥇</th><th>Tài khoản</th><th>Chuỗi Streak</th><th>Điểm danh gần nhất</th></tr>
+        {% for u, d in users %}
         <tr>
+            <td><b>#{{ loop.index }}</b></td>
             <td><b>{{ u }}</b></td>
             <td>{{ d.streak }} ngày 🔥</td>
-            <td>{{ d.last_checkin or 'Chưa' }}</td>
+            <td>{{ d.last_checkin or 'Chưa điểm danh' }}</td>
         </tr>
         {% endfor %}
     </table>
+
+    <div id="firework-screen" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#000; z-index:99999; justify-content:center; align-items:center; flex-direction:column;">
+        <div id="giant-number" style="font-size:100px; font-weight:900; color:#f8b500; text-shadow:0 0 30px #ff3333;">3</div>
+        <canvas id="fireworkCanvas" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none;"></canvas>
+    </div>
+
+    <script>
+        function triggerFireworks() {
+            const screen = document.getElementById("firework-screen");
+            const numEl = document.getElementById("giant-number");
+            screen.style.display = "flex";
+            let count = 3;
+            numEl.innerText = count;
+            const countdownInterval = setInterval(() => {
+                count--;
+                if (count > 0) { numEl.innerText = count; }
+                else if (count === 0) { numEl.innerText = "🎉 BÙM 🎉"; }
+                else {
+                    clearInterval(countdownInterval);
+                    numEl.innerText = "";
+                    initFireworksCanvas();
+                    setTimeout(() => { location.reload(); }, 6000); // Tự tắt sau 6 giây
+                }
+            }, 1000);
+        }
+
+        function initFireworksCanvas() {
+            const canvas = document.getElementById("fireworkCanvas");
+            const ctx = canvas.getContext("2d");
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            class Firework {
+                constructor() {
+                    this.x = Math.random() * canvas.width;
+                    this.y = canvas.height;
+                    this.sx = this.x; this.sy = canvas.height;
+                    this.tx = Math.random() * canvas.width;
+                    this.ty = Math.random() * (canvas.height / 2);
+                    this.angle = Math.atan2(this.ty - this.sy, this.tx - this.sx);
+                    this.speed = 4;
+                    this.particles = [];
+                    this.exploded = false;
+                }
+                update() {
+                    if (!this.exploded) {
+                        this.x += Math.cos(this.angle) * this.speed;
+                        this.y += Math.sin(this.angle) * this.speed;
+                        if (Math.hypot(this.x - this.sx, this.y - this.sy) >= Math.hypot(this.tx - this.sx, this.ty - this.sy)) {
+                            this.exploded = true;
+                            for (let i = 0; i < 80; i++) { this.particles.push(new Particle(this.tx, this.ty)); }
+                        }
+                    }
+                    this.particles.forEach((p, index) => {
+                        p.update();
+                        if (p.alpha <= 0) this.particles.splice(index, 1);
+                    });
+                }
+                draw() {
+                    if (!this.exploded) {
+                        ctx.fillStyle = "#f8b500";
+                        ctx.fillRect(this.x, this.y, 3, 3);
+                    }
+                    this.particles.forEach(p => p.draw());
+                }
+            }
+
+            class Particle {
+                constructor(x, y) {
+                    this.x = x; this.y = y;
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = Math.random() * 6;
+                    this.vx = Math.cos(angle) * speed;
+                    this.vy = Math.sin(angle) * speed;
+                    this.alpha = 1;
+                    this.decay = Math.random() * 0.015 + 0.010;
+                    this.color = `hsl(${Math.random() * 360}, 100%, 60%)`;
+                }
+                update() {
+                    this.x += this.vx; this.y += this.vy;
+                    this.vy += 0.05; this.alpha -= this.decay;
+                }
+                draw() {
+                    ctx.save();
+                    ctx.globalAlpha = this.alpha;
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, 2.5, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            }
+
+            let fireworks = [];
+            function loop() {
+                ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                if (Math.random() < 0.08) fireworks.push(new Firework());
+                fireworks.forEach((fw, index) => {
+                    fw.update(); fw.draw();
+                    if (fw.exploded && fw.particles.length === 0) fireworks.splice(index, 1);
+                });
+                requestAnimationFrame(loop);
+            }
+            loop();
+        }
+    </script>
 </body>
 </html>"""
 
