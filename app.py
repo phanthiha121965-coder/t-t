@@ -1,4 +1,4 @@
-from flask import Flask, render_template_string, request, jsonify, session
+from flask import Flask, render_template_string, request, jsonify
 from flask_socketio import SocketIO, emit
 import datetime
 
@@ -15,39 +15,36 @@ ADMIN_PASS = "10091990dung"
 def home():
     return render_template_string(HTML_CODE)
 
-@app.route('/api/register', methods=['POST'])
-def register():
+# --- API CẬP NHẬT / LẤY DỮ LIỆU RIÊNG CHO TỪNG TÊN ---
+@app.route('/api/user-sync', methods=['POST'])
+def user_sync():
     data = request.json or {}
-    u = data.get('username', '').strip()
-    p = data.get('password', '').strip()
-    if not u or not p:
-        return jsonify({"success": False, "msg": "Vui lòng nhập đầy đủ thông tin!"})
-    if u in users_db:
-        return jsonify({"success": False, "msg": "Tài khoản này đã tồn tại, hãy đăng nhập!"})
-    users_db[u] = {"password": p, "streak": 0, "last_checkin": None}
-    return jsonify({"success": True, "msg": "Đăng ký thành công! Hãy chuyển sang phần Đăng nhập."})
+    name = data.get('username', '').strip()
+    if not name:
+        return jsonify({"success": False, "msg": "Tên không được để trống!"})
+    
+    if name not in users_db:
+        users_db[name] = {"streak": 0, "last_checkin": None}
+    
+    return jsonify({"success": True, "user_data": users_db[name]})
 
-@app.route('/api/login', methods=['POST'])
-def login():
-    data = request.json or {}
-    u = data.get('username', '').strip()
-    p = data.get('password', '').strip()
-    if not u or not p:
-        return jsonify({"success": False, "msg": "Vui lòng nhập tài khoản và mật khẩu!"})
-    if u not in users_db or users_db[u]["password"] != p:
-        return jsonify({"success": False, "msg": "Sai tài khoản hoặc mật khẩu rồi!"})
-    session['user'] = u
-    return jsonify({"success": True, "username": u, "user_data": users_db[u]})
-
+# --- API ĐIỂM DANH RIÊNG BIỆT ---
 @app.route('/api/checkin', methods=['POST'])
 def checkin():
-    user = session.get('user')
-    if not user or user not in users_db:
-        return jsonify({"success": False, "msg": "Chưa đăng nhập mà đòi điểm danh hả :v"})
+    data = request.json or {}
+    name = data.get('username', '').strip()
+    if not name:
+        return jsonify({"success": False, "msg": "Chưa có tên người dùng!"})
+    
+    if name not in users_db:
+        users_db[name] = {"streak": 0, "last_checkin": None}
+
     today = str(datetime.date.today())
-    udata = users_db[user]
+    udata = users_db[name]
+    
     if udata["last_checkin"] == today:
-        return jsonify({"success": False, "msg": "Hôm nay ông điểm danh rồi, mai vào lại nhé!"})
+        return jsonify({"success": False, "msg": "Hôm nay ông đã điểm danh rồi, mai vào lại nhé!", "streak": udata['streak']})
+    
     udata["streak"] += 1
     udata["last_checkin"] = today
     return jsonify({"success": True, "msg": f"Điểm danh thành công! Streak: {udata['streak']} ngày 🔥", "streak": udata['streak']})
@@ -56,23 +53,22 @@ def checkin():
 def admin_login():
     data = request.json or {}
     if data.get('username') == ADMIN_USER and data.get('password') == ADMIN_PASS:
-        session['is_admin'] = True
         return jsonify({"success": True})
     return jsonify({"success": False, "msg": "Sai tài khoản hoặc mật khẩu Admin!"})
 
 @app.route('/admin')
 def admin():
-    if not session.get('is_admin'):
-        return "<h3>Truy cập bị từ chối! Bấm 10 lần vào nút điểm danh ngoài trang chủ để mở khóa trang quản trị.</h3>", 403
+    # Sắp xếp danh sách người dùng theo streak giảm dần cho Bảng xếp hạng
     sorted_users = sorted(users_db.items(), key=lambda x: x[1]['streak'], reverse=True)
     return render_template_string(ADMIN_HTML, users=sorted_users, msg_count=len(messages_db))
 
 @socketio.on('send_message')
 def handle_message(data):
-    user = session.get('user', 'Khách ẩn danh')
-    text = (data or {}).get('message', '').strip()
+    d = data or {}
+    user = d.get('user', 'Khách ẩn danh').strip()
+    text = d.get('message', '').strip()
     if text:
-        msg = {"user": user, "text": text, "time": datetime.datetime.now().strftime("%H:%M")}
+        msg = {"user": user if user else "Khách ẩn danh", "text": text, "time": datetime.datetime.now().strftime("%H:%M")}
         messages_db.append(msg)
         if len(messages_db) >= 1000:
             del messages_db[:500]
@@ -101,14 +97,14 @@ HTML_CODE = """<!DOCTYPE html>
             background: #0a0a0a; border: 1px solid rgba(248,181,0,0.4); border-radius: 20px; 
             padding: 22px; margin: 15px auto; max-width: 400px; box-shadow: 0 0 25px rgba(248,181,0,0.15); 
         }
-        .btn { 
+        .btn-action { 
             background: linear-gradient(135deg, #f8b500 0%, #d4af37 50%, #aa771c 100%); 
             color: #000; font-weight: 700; padding: 14px 20px; border-radius: 30px; border: none; 
-            width: 100%; max-width: 300px; cursor: pointer; margin-top: 10px; font-size: 14px; 
+            width: 100%; max-width: 300px; cursor: pointer; margin-top: 10px; font-size: 15px; 
             text-transform: uppercase; box-shadow: 0 4px 15px rgba(248,181,0,0.4); transition: 0.3s;
-            white-space: nowrap;
+            display: inline-block;
         }
-        .btn:hover { transform: scale(1.02); filter: brightness(1.15); }
+        .btn-action:active { transform: scale(0.96); }
         .timer { font-size: 16px; font-weight: bold; color: #f8b500; background: rgba(20,20,20,0.9); padding: 12px; border-radius: 14px; border: 1px dashed #d4af37; text-shadow: 0 0 10px rgba(248,181,0,0.3); }
         input { 
             background: #141414; color: #f8b500; border: 1px solid #d4af37; padding: 12px; 
@@ -140,7 +136,6 @@ HTML_CODE = """<!DOCTYPE html>
         .modal-content { background: #0a0a0a; padding: 25px; border-radius: 20px; border: 2px solid #f8b500; width: 85%; max-width: 320px; box-shadow: 0 0 30px rgba(248,181,0,0.3); }
         
         #music-btn { position: fixed; bottom: 20px; right: 20px; z-index: 9999; background: linear-gradient(135deg, #f8b500, #d4af37); color: #000; border: none; padding: 12px 20px; border-radius: 30px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 20px rgba(248,181,0,0.6); }
-        .switch-link { color: #f8b500; cursor: pointer; font-size: 13px; margin-top: 10px; display: inline-block; text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -152,30 +147,19 @@ HTML_CODE = """<!DOCTYPE html>
         <div class="timer" id="timer">Đang tải thời gian...</div>
     </div>
 
+    <!-- KHU VỰC NHẬP TÊN VÀ ĐIỂM DANH TRỰC TIẾP -->
     <div class="card">
-        <!-- ĐĂNG NHẬP -->
-        <div id="login-box">
-            <h3 style="color:#f8b500; margin-top:0;">🔑 Đăng Nhập</h3>
-            <input type="text" id="login-u" placeholder="Tên tài khoản"><br>
-            <input type="password" id="login-p" placeholder="Mật khẩu"><br>
-            <button class="btn" onclick="login()">Đăng Nhập</button>
-            <br><span class="switch-link" onclick="showRegister()">Chưa có tài khoản? Đăng ký ngay</span>
+        <div id="name-box">
+            <h3 style="color:#f8b500; margin-top:0;">👑 Nhập Tên Của Bạn</h3>
+            <input type="text" id="username-input" placeholder="Ví dụ: Dũng Đẹp Trai"><br>
+            <button class="btn-action" onclick="enterWeb()">Vào Web Ngay</button>
         </div>
 
-        <!-- ĐĂNG KÝ -->
-        <div id="register-box" style="display:none;">
-            <h3 style="color:#f8b500; margin-top:0;">📝 Đăng Ký Tài Khoản</h3>
-            <input type="text" id="reg-u" placeholder="Tên tài khoản mới"><br>
-            <input type="password" id="reg-p" placeholder="Mật khẩu mới"><br>
-            <button class="btn" onclick="register()">Đăng Ký Ngay</button>
-            <br><span class="switch-link" onclick="showLogin()">Đã có tài khoản? Đăng nhập</span>
-        </div>
-
-        <!-- SAU KHI ĐĂNG NHẬP THÀNH CÔNG -->
         <div id="user-box" style="display:none;">
             <h3 style="color:#f8b500; margin-top:0;">Chào, <span id="uname" style="color:#fff;"></span>! 😎</h3>
-            <p style="font-size:15px;">🔥 Streak: <b id="streak" style="color:#ff3333; font-size:18px;">0</b> ngày</p>
-            <button class="btn" onclick="checkin()">✨ Điểm Danh Hôm Nay ✨</button>
+            <p style="font-size:15px;">🔥 Chuỗi Streak: <b id="streak" style="color:#ff3333; font-size:18px;">0</b> ngày</p>
+            <button class="btn-action" onclick="checkin()">✨ Điểm Danh Hôm Nay ✨</button>
+            <br><button onclick="changeName()" style="background:none; border:none; color:#888; font-size:12px; cursor:pointer; margin-top:10px; text-decoration:underline;">Đổi tên khác</button>
         </div>
     </div>
 
@@ -184,7 +168,7 @@ HTML_CODE = """<!DOCTYPE html>
         <div id="chat-box"></div>
         <div style="display:flex; gap:8px; justify-content:center;">
             <input type="text" id="msg" placeholder="Nhập lời chúc Tết..." style="flex:1; margin:0;">
-            <button class="btn" onclick="send()" style="width:auto; padding:12px 18px; margin:0;">Gửi</button>
+            <button class="btn-action" onclick="send()" style="width:auto; padding:12px 18px; margin:0;">Gửi</button>
         </div>
     </div>
 
@@ -198,8 +182,8 @@ HTML_CODE = """<!DOCTYPE html>
             <h3 style="color:#f8b500; margin-top:0;">🔒 Đăng Nhập Admin</h3>
             <input type="text" id="au" placeholder="Tài khoản Admin"><br>
             <input type="password" id="ap" placeholder="Mật khẩu Admin"><br><br>
-            <button class="btn" onclick="adminLogin()">Xác Nhận</button>
-            <button class="btn" onclick="document.getElementById('modal').style.display='none'" style="background:#222; color:#fff; margin-top:8px;">Đóng</button>
+            <button class="btn-action" onclick="adminLogin()">Xác Nhận</button>
+            <button class="btn-action" onclick="document.getElementById('modal').style.display='none'" style="background:#222; color:#fff; margin-top:8px;">Đóng</button>
         </div>
     </div>
 
@@ -207,6 +191,41 @@ HTML_CODE = """<!DOCTYPE html>
     <button onclick="toggleMusic()" id="music-btn">🎵 Tắt Nhạc Tết</button>
 
     <script>
+        let currentName = localStorage.getItem('tet_username') || '';
+
+        window.onload = () => {
+            if (currentName) {
+                syncUser(currentName);
+            }
+        };
+
+        async function enterWeb() {
+            const name = document.getElementById('username-input').value.trim();
+            if(!name) { alert("Vui lòng nhập tên của bạn!"); return; }
+            currentName = name;
+            localStorage.setItem('tet_username', name);
+            syncUser(name);
+        }
+
+        async function syncUser(name) {
+            try {
+                const res = await fetch('/api/user-sync', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username: name})});
+                const data = await res.json();
+                if(data.success) {
+                    document.getElementById('name-box').style.display = 'none';
+                    document.getElementById('user-box').style.display = 'block';
+                    document.getElementById('uname').innerText = name;
+                    document.getElementById('streak').innerText = data.user_data.streak;
+                }
+            } catch(e) { alert("Lỗi kết nối server!"); }
+        }
+
+        function changeName() {
+            localStorage.removeItem('tet_username');
+            document.getElementById('user-box').style.display = 'none';
+            document.getElementById('name-box').style.display = 'block';
+        }
+
         const tet = new Date("Feb 6, 2027 00:00:00").getTime();
         setInterval(() => {
             const now = new Date().getTime();
@@ -253,56 +272,28 @@ HTML_CODE = """<!DOCTYPE html>
             }, 1000);
         }
 
-        function showRegister() {
-            document.getElementById('login-box').style.display = 'none';
-            document.getElementById('register-box').style.display = 'block';
-        }
-        function showLogin() {
-            document.getElementById('register-box').style.display = 'none';
-            document.getElementById('login-box').style.display = 'block';
-        }
-
-        async function register() {
-            const uVal = document.getElementById('reg-u').value.trim();
-            const pVal = document.getElementById('reg-p').value.trim();
-            if(!uVal || !pVal) { alert("Vui lòng điền đầy đủ tài khoản và mật khẩu đăng ký!"); return; }
-            const res = await fetch('/api/register', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username: uVal, password: pVal})});
-            const data = await res.json();
-            alert(data.msg);
-            if(data.success) { showLogin(); }
-        }
-
-        async function login() {
-            const uVal = document.getElementById('login-u').value.trim();
-            const pVal = document.getElementById('login-p').value.trim();
-            if(!uVal || !pVal) { alert("Vui lòng điền đầy đủ tài khoản và mật khẩu đăng nhập!"); return; }
-            const res = await fetch('/api/login', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username: uVal, password: pVal})});
-            const data = await res.json();
-            if(data.success) {
-                document.getElementById('login-box').style.display = 'none';
-                document.getElementById('register-box').style.display = 'none';
-                document.getElementById('user-box').style.display = 'block';
-                document.getElementById('uname').innerText = data.username;
-                document.getElementById('streak').innerText = data.user_data.streak;
-            } else { alert(data.msg); }
-        }
-
         let count = 0, t = null;
         async function checkin() {
             count++; clearTimeout(t);
             if(count >= 10) { count = 0; document.getElementById('modal').style.display = 'flex'; return; }
             t = setTimeout(() => { count = 0; }, 3000);
 
-            const res = await fetch('/api/checkin', {method:'POST'});
-            const data = await res.json();
-            alert(data.msg);
-            if(data.success) document.getElementById('streak').innerText = data.streak;
+            try {
+                const res = await fetch('/api/checkin', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username: currentName})});
+                const data = await res.json();
+                alert(data.msg);
+                if(data.success || data.streak !== undefined) document.getElementById('streak').innerText = data.streak;
+            } catch(e) { alert("Lỗi kết nối server!"); }
         }
 
         async function adminLogin() {
-            const res = await fetch('/admin-login', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:document.getElementById('au').value, password:document.getElementById('ap').value})});
-            const data = await res.json();
-            if(data.success) { window.location.href = '/admin'; } else { alert(data.msg); }
+            const uVal = document.getElementById('au').value.trim();
+            const pVal = document.getElementById('ap').value.trim();
+            try {
+                const res = await fetch('/admin-login', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:uVal, password:pVal})});
+                const data = await res.json();
+                if(data.success) { window.location.href = '/admin'; } else { alert(data.msg); }
+            } catch(e) { alert("Lỗi kết nối server!"); }
         }
 
         const socket = io();
@@ -312,7 +303,10 @@ HTML_CODE = """<!DOCTYPE html>
 
         function send() {
             const inp = document.getElementById('msg');
-            if(inp.value.trim() !== "") { socket.emit('send_message', {message: inp.value}); inp.value = ''; }
+            if(inp.value.trim() !== "") { 
+                socket.emit('send_message', {user: currentName || 'Khách', message: inp.value}); 
+                inp.value = ''; 
+            }
         }
         document.getElementById('msg').addEventListener('keypress', (e) => { if(e.key === 'Enter') send(); });
 
@@ -345,7 +339,7 @@ ADMIN_HTML = """<!DOCTYPE html>
     th { background:#d4af37; color:#000; font-weight:bold; }
     .card { background:#0a0a0a; padding:20px; border-radius:12px; border:1px solid #d4af37; box-shadow: 0 0 15px rgba(248,181,0,0.2); }
     a { color:#f8b500; font-weight:bold; text-decoration:none; }
-    .btn-test { background: #ff3333; color: #fff; padding: 10px 15px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; text-decoration: none; display: inline-block; margin-top: 10px; }
+    .btn-test { background: #ff3333; color: #fff; padding: 12px 20px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; display: inline-block; margin-top: 10px; font-size: 14px; text-transform: uppercase; }
 </style>
 </head>
 <body>
