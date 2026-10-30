@@ -42,7 +42,7 @@
             transition: background 1s ease;
         }
 
-        /* Chế độ nền đen hoàn toàn khi pháo hoa nổ */
+        /* Chế độ nền đen và ẩn toàn bộ giao diện kể cả khung chữ khi pháo hoa nổ */
         body.fireworks-mode {
             background: #000000 !important;
         }
@@ -50,6 +50,7 @@
         body.fireworks-mode #mainFooter,
         body.fireworks-mode #countdownSection,
         body.fireworks-mode #actionButtons,
+        body.fireworks-mode #wishCardContainer,
         body.fireworks-mode .lantern {
             opacity: 0;
             pointer-events: none;
@@ -70,32 +71,6 @@
             border: 1px solid rgba(247, 208, 70, 0.25);
             box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 249, 210, 0.3);
             transition: all 0.5s ease;
-        }
-
-        /* Khi pháo hoa nổ: Biến mất hoàn toàn khung, chỉ hiện chữ to rõ nghệ thuật giữa màn hình */
-        body.fireworks-mode #wishCardContainer {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 100%;
-            max-width: 900px;
-            z-index: 50;
-            background: transparent !important;
-            border: none !important;
-            box-shadow: none !important;
-        }
-        body.fireworks-mode #wishCardContainer i,
-        body.fireworks-mode #wishCardContainer .fa-quote-left,
-        body.fireworks-mode #wishCardContainer .fa-quote-right {
-            display: none !important;
-        }
-        body.fireworks-mode #wishDisplayText {
-            font-size: 2.5rem !important;
-            font-weight: 900;
-            color: #FFE875 !important;
-            text-shadow: 0 0 20px #FF0000, 0 0 40px #FFD700;
-            letter-spacing: 1px;
         }
 
         .time-card-bg {
@@ -233,7 +208,7 @@
             </div>
 
             <!-- Khung Lời Chúc Trung Tâm -->
-            <div id="wishCardContainer" class="glass-panel max-w-2xl mx-auto rounded-3xl p-6 sm:p-10 relative overflow-hidden mb-8 shadow-2xl">
+            <div id="wishCardContainer" class="glass-panel max-w-2xl mx-auto rounded-3xl p-6 sm:p-10 relative overflow-hidden mb-8 shadow-2xl transition-opacity duration-500">
                 <i class="fa-solid fa-quote-left text-2xl text-gold-500/30 mb-2 block"></i>
                 <p id="wishDisplayText" class="font-serif italic text-xl sm:text-3xl text-gold-100 font-medium leading-relaxed min-h-[4rem] flex items-center justify-center px-4">
                     "Vạn sự như ý - Tấn tài tấn lộc - Xuân Đinh Mùi rạng rỡ huy hoàng!"
@@ -276,10 +251,7 @@
             tetAudio.play().then(() => { tetAudio.pause(); tetAudio.currentTime = 0; }).catch(e => {});
         }
 
-        // --- HIỆU ỨNG GÁN CHỮ TRỰC TIẾP KHÔNG BỊ DÍNH HOẶC LỖI ---
-        let typingTimeout = null;
         function showTextDirectly(element, text) {
-            if (typingTimeout) clearTimeout(typingTimeout);
             element.innerText = text;
         }
 
@@ -305,24 +277,22 @@
             } else if (t >= 7.5 && t < 11.2) {
                 currentText = "Chúc Mừng Năm Mới - Một Năm Mới Bình An";
             } else if (t >= 11.2) {
-                // VỪA DỨT CÂU CHÚC -> CHUYỂN NỀN ĐEN TRỐNG TRẢI + BÙNG NỔ PHÁO HOA SẮC NÉT!
+                // KHI ĐẾN PHÁO HOA NỔ -> BẬT CHẾ ĐỘ NỀN ĐEN, ẨN HOÀN TOÀN KHUNG CHỮ ĐỂ PHÁO HOA RỰC RỠ TRỌN VẸN
                 if (!fireworksStarted) {
                     fireworksStarted = true;
                     document.body.classList.add('fireworks-mode');
-                    currentText = "CHÚC MỪNG NĂM MỚI ĐINH MÙI 2027";
                     startFireworksEngine();
-                } else {
-                    currentText = "CHÚC MỪNG NĂM MỚI ĐINH MÙI 2027";
                 }
+                currentText = "";
             }
 
-            if (currentText && currentText !== lastLoggedText) {
+            if (currentText !== lastLoggedText) {
                 lastLoggedText = currentText;
                 showTextDirectly(wishTextEl, currentText);
             }
         };
 
-        // KHI HẾT BÀI NHẠC -> TỰ ĐỘNG THU DÒN, TRẢ VỀ TRANG CHỦ BAN ĐẦU HOÀN TOÀN
+        // KHI HẾT BÀI NHẠC -> GỠ SẠCH CLASS, TRẢ VỀ TRANG CHỦ BAN ĐẦU HOÀN TOÀN
         tetAudio.onended = function() {
             document.body.classList.remove('fireworks-mode');
             fireworksStarted = false;
