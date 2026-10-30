@@ -30,6 +30,21 @@
             pointer-events: none; z-index: 99; 
         }
 
+        /* Màn hình chào để kích hoạt âm thanh trình duyệt */
+        #welcome-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(139, 0, 0, 0.95); z-index: 9999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+        }
+        #welcome-overlay h2 { font-size: 2rem; color: #ffd700; margin-bottom: 20px; }
+        #welcome-overlay button {
+            padding: 15px 30px; font-size: 1.2rem; font-weight: bold;
+            background-color: #ff4500; color: white; border: none; border-radius: 50px;
+            cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            transition: transform 0.2s;
+        }
+        #welcome-overlay button:hover { transform: scale(1.05); background-color: #ff6347; }
+
         .control-panel {
             position: fixed; bottom: 20px; right: 20px;
             background: rgba(0, 0, 0, 0.85); border: 2px solid #ffd700;
@@ -40,9 +55,16 @@
         .btn-test:hover { background-color: #218838; }
         .btn-reset { background-color: #dc3545; color: white; margin-left: 5px; }
         .btn-reset:hover { background-color: #c82333; }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
+
+    <!-- Lớp phủ bắt buộc click để mở khóa âm thanh trình duyệt -->
+    <div id="welcome-overlay">
+        <h2>🎉 CHÀO MỪNG ĐẾN VỚI ĐẾM NGƯỢC TẾT 2027 🎉</h2>
+        <button onclick="unlockAudio()">🔊 Bấm Vào Đây Để Vào Web</button>
+    </div>
 
     <h1>ĐẾM NGƯỢC TẾT ĐINH MÙI 2027</h1>
     <div id="countdown">Đang tải...</div>
@@ -57,7 +79,7 @@
         <button class="btn-reset" onclick="resetTest()">Reset</button>
     </div>
 
-    <!-- Sử dụng lại file tet.mp3 gộp chung chuẩn chỉnh ban đầu + nhạc pháo hoa -->
+    <!-- 2 File âm thanh chuẩn chỉnh -->
     <audio id="tetAudio" src="/static/tet.mp3" preload="auto"></audio>
     <audio id="fireworksAudio" src="/static/nhac_tet.mp3" preload="auto"></audio>
 
@@ -70,8 +92,20 @@
         
         let audioPlayed = false;
         let fireworksTriggered = false;
+        let soundUnlocked = false;
 
-        // Khi file tetAudio (chứa lời dạo + đếm ngược + câu chúc) chạy xong hoàn toàn -> Bật nhạc pháo hoa và bắn pháo hoa rợp trời!
+        // Hàm mở khóa âm thanh khi người dùng bấm vào nút chào mừng
+        function unlockAudio() {
+            document.getElementById("welcome-overlay").classList.add("hidden");
+            soundUnlocked = true;
+            
+            // Kích hoạt nạp sẵn âm thanh để sẵn sàng chạy
+            tetAudio.play().then(() => {
+                tetAudio.pause();
+                tetAudio.currentTime = 0;
+            }).catch(e => console.log("Mở khóa âm thanh thành công"));
+        }
+
         tetAudio.onended = function() {
             if (!fireworksTriggered) {
                 fireworksTriggered = true;
@@ -82,28 +116,28 @@
         };
 
         function updateTimer() {
+            if (!soundUnlocked) return; // Chưa bấm mở khóa thì chưa chạy đồng hồ âm thanh
+
             let now = new Date().getTime();
             let distance = targetTime - now;
-
-            // Kích hoạt phát file tetAudio trước mốc 0 một khoảng thời gian vừa đúng độ dài của file âm thanh (ví dụ 10 giây cuối)
             let triggerPoint = 10000; 
 
             if (distance <= triggerPoint && distance > 0 && !audioPlayed) {
                 audioPlayed = true;
                 tetAudio.currentTime = 0;
                 tetAudio.playbackRate = 1.0;
-                tetAudio.play().catch(e => console.log("Cần click trang web để phát âm thanh"));
+                tetAudio.play().catch(e => console.log("Lỗi phát tetAudio"));
             }
 
-            // Khi vào 5 giây cuối -> Chuyển màn hình sang nền đen
             if (distance <= 5000 && distance > 0) {
+                tetAudio.playbackRate = 0.65; // Giảm tốc độ 5 giây cuối cho thong thả
                 document.body.classList.add("dark-mode");
             }
 
-            // Khi đến mốc 0 giây
             if (distance <= 0) {
                 countdownEl.innerText = "CHÚC MỪNG NĂM MỚI!";
-                return; // Chờ file tetAudio đọc xong câu chúc thì sự kiện onended ở trên sẽ tự động kích hoạt pháo hoa
+                tetAudio.playbackRate = 1.0;
+                return;
             }
 
             let seconds = Math.floor(distance / 1000);
@@ -120,6 +154,8 @@
         setInterval(updateTimer, 1000);
 
         function testCountdown() {
+            soundUnlocked = true;
+            document.getElementById("welcome-overlay").classList.add("hidden");
             targetTime = new Date().getTime() + 10000;
             audioPlayed = false;
             fireworksTriggered = false;
