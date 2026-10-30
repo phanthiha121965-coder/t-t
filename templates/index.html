@@ -72,37 +72,24 @@
         <button class="btn-reset" onclick="resetTest()">Reset</button>
     </div>
 
-    <!-- tet.mp3 (chứa đếm ngược + lời chúc) và nhac_tet.mp3 (nhạc pháo hoa nổ) -->
+    <!-- DÙNG ĐÚNG 1 FILE tet.mp3 DUY NHẤT -->
     <audio id="tetAudio" src="/static/tet.mp3" preload="auto"></audio>
-    <audio id="fireworksAudio" src="/static/nhac_tet.mp3" preload="auto"></audio>
 
     <script>
         let targetTime = new Date("2027-02-06T00:00:00").getTime();
         
         const tetAudio = document.getElementById("tetAudio");
-        const fireworksAudio = document.getElementById("fireworksAudio");
         const countdownEl = document.getElementById("countdown");
         
         let soundAllowed = false;
         let audioPlayed = false;
-        let fireworksTriggered = false;
+        let fireworksStarted = false;
 
         function enableSound() {
             document.getElementById("sound-overlay").style.display = "none";
             soundAllowed = true;
             tetAudio.play().then(() => { tetAudio.pause(); tetAudio.currentTime = 0; }).catch(e => {});
-            fireworksAudio.play().then(() => { fireworksAudio.pause(); fireworksAudio.currentTime = 0; }).catch(e => {});
         }
-
-        // Khi file tetAudio (chứa lời chúc) chạy xong -> Kích hoạt nhạc pháo hoa và bắn pháo hoa cùng lúc cực kỳ mượt mà!
-        tetAudio.onended = function() {
-            if (!fireworksTriggered) {
-                fireworksTriggered = true;
-                fireworksAudio.currentTime = 0;
-                fireworksAudio.play().catch(e => console.log("Lỗi nhạc pháo hoa"));
-                startFireworks();
-            }
-        };
 
         function updateTimer() {
             if (!soundAllowed) return;
@@ -110,30 +97,31 @@
             let now = new Date().getTime();
             let distance = targetTime - now;
 
-            let seconds = Math.floor(distance / 1000);
-
-            // Bắt đầu phát file tetAudio chuẩn xác tại mốc 10 giây cuối
-            if (seconds === 10 && !audioPlayed) {
-                audioPlayed = true;
-                tetAudio.currentTime = 0;
-                tetAudio.playbackRate = 1.0;
-                tetAudio.play().catch(e => console.log("Lỗi phát tetAudio"));
-            }
-
-            // Từ 5 giây cuối -> Chuyển nền sang màu đen để đếm ngược 5-4-3-2-1
-            if (seconds <= 5 && distance > 0) {
-                countdownEl.innerText = seconds; 
-                document.body.classList.add("dark-mode");
-            } 
-            
-            // Khi đến mốc 0 giây
             if (distance <= 0) {
                 countdownEl.innerText = "CHÚC MỪNG NĂM MỚI!";
                 document.body.classList.add("dark-mode");
-                return; // Giữ nguyên màn hình chúc mừng, chờ file tetAudio đọc xong thì pháo hoa và nhạc pháo hoa tự động bung lụa ở sự kiện onended ở trên!
+                if (!fireworksStarted) {
+                    fireworksStarted = true;
+                    startFireworks();
+                }
+                return;
             }
 
-            if (seconds > 5) {
+            // Tính chuẩn số giây còn lại (làm tròn lên để tránh bị lệch nhịp hiển thị)
+            let seconds = Math.ceil(distance / 1000);
+
+            // Khi đồng hồ đếm đúng đến mốc chuẩn bị (ví dụ còn 11 giây) -> Phát file tet.mp3 chạy một mạch từ đầu đến cuối
+            if (seconds === 11 && !audioPlayed) {
+                audioPlayed = true;
+                tetAudio.currentTime = 0;
+                tetAudio.play().catch(e => console.log("Lỗi phát tetAudio"));
+            }
+
+            // Từ 5 giây cuối -> Chuyển sang nền đen để đếm 5, 4, 3, 2, 1 khớp hoàn hảo với giọng đọc trong file tet.mp3
+            if (seconds <= 5) {
+                countdownEl.innerText = seconds; 
+                document.body.classList.add("dark-mode");
+            } else {
                 let hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
                 let minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
                 let secs = Math.floor((distance % (1000 * 60)) / 1000);
@@ -141,28 +129,29 @@
             }
         }
 
-        setInterval(updateTimer, 200);
+        setInterval(updateTimer, 100); // Quét siêu nhanh 100ms để bắt chuẩn từng giây, không bao giờ lệch
 
         function testCountdown() {
             soundAllowed = true;
             document.getElementById("sound-overlay").style.display = "none";
-            targetTime = new Date().getTime() + 11000;
+            targetTime = new Date().getTime() + 12000; // Test lùi về 12 giây trước mốc 0
             audioPlayed = false;
-            fireworksTriggered = false;
+            fireworksStarted = false;
             document.body.classList.remove("dark-mode");
             tetAudio.pause(); tetAudio.currentTime = 0;
-            fireworksAudio.pause(); fireworksAudio.currentTime = 0;
             countdownEl.innerText = "Đang chuẩn bị...";
+            // Xóa sạch pháo hoa cũ nếu đang chạy
+            particles = [];
         }
 
         function resetTest() {
             targetTime = new Date("2027-02-06T00:00:00").getTime();
             audioPlayed = false;
-            fireworksTriggered = false;
+            fireworksStarted = false;
             document.body.classList.remove("dark-mode");
             tetAudio.pause(); tetAudio.currentTime = 0;
-            fireworksAudio.pause(); fireworksAudio.currentTime = 0;
             countdownEl.innerText = "Đang tải...";
+            particles = [];
         }
 
         const canvas = document.getElementById("fireworksCanvas");
