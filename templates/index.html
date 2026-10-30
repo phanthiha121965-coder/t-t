@@ -30,7 +30,6 @@
             pointer-events: none; z-index: 99; 
         }
 
-        /* Bảng điều khiển thử nghiệm nổi trực tiếp, không cần đăng nhập */
         .control-panel {
             position: fixed; bottom: 20px; right: 20px;
             background: rgba(0, 0, 0, 0.85); border: 2px solid #ffd700;
@@ -50,7 +49,7 @@
 
     <canvas id="fireworksCanvas"></canvas>
 
-    <!-- Bảng Thử Nghiệm Nhanh (Không cần đăng nhập) -->
+    <!-- Bảng Thử Nghiệm Nhanh -->
     <div class="control-panel">
         <h3 style="color: #ffd700; font-size: 1rem;">Bảng Thử Nghiệm</h3>
         <p style="margin-top: 3px; font-size: 0.75rem;">Test hiệu ứng âm thanh & pháo hoa:</p>
@@ -58,71 +57,72 @@
         <button class="btn-reset" onclick="resetTest()">Reset</button>
     </div>
 
-    <!-- 3 File âm thanh cắt nhỏ + 1 file nhạc pháo hoa -->
-    <audio id="audioPart1" src="/static/chuan_bi.mp3" preload="auto"></audio>
-    <audio id="audioPart2" src="/static/dem_nguoc.mp3" preload="auto"></audio>
-    <audio id="audioPart3" src="/static/chuc_tet.mp3" preload="auto"></audio>
+    <!-- Thẻ audio chính và pháo hoa -->
+    <audio id="mainAudio" preload="auto"></audio>
     <audio id="fireworksAudio" src="/static/nhac_tet.mp3" preload="auto"></audio>
 
     <script>
         let targetTime = new Date("2027-02-06T00:00:00").getTime();
         
-        const audioPart1 = document.getElementById("audioPart1");
-        const audioPart2 = document.getElementById("audioPart2");
-        const audioPart3 = document.getElementById("audioPart3");
+        const mainAudio = document.getElementById("mainAudio");
         const fireworksAudio = document.getElementById("fireworksAudio");
         const countdownEl = document.getElementById("countdown");
         
-        let audioPlayed = false;
+        let preparationPlayed = false;
+        let countdownPlayed = false;
+        let greetingPlayed = false;
         let fireworksTriggered = false;
-
-        // Chuỗi phát nối tiếp 3 file âm thanh cực kỳ mượt mà:
-        audioPart1.onended = function() {
-            audioPart2.currentTime = 0;
-            audioPart2.playbackRate = 0.7; // Chậm rãi đúng nhịp đếm 5-4-3-2-1
-            audioPart2.play().catch(e => console.log("Lỗi phần 2"));
-        };
-
-        audioPart2.onended = function() {
-            audioPart3.currentTime = 0;
-            audioPart3.playbackRate = 1.0; // Đọc câu chúc bình an
-            audioPart3.play().catch(e => console.log("Lỗi phần 3"));
-        };
-
-        audioPart3.onended = function() {
-            if (!fireworksTriggered) {
-                fireworksTriggered = true;
-                fireworksAudio.currentTime = 0;
-                fireworksAudio.play().catch(e => console.log("Lỗi phát nhạc pháo hoa"));
-                startFireworks();
-            }
-        };
 
         function updateTimer() {
             let now = new Date().getTime();
             let distance = targetTime - now;
 
-            let triggerPoint = 10000; 
-
-            if (distance <= triggerPoint && distance > 0 && !audioPlayed) {
-                audioPlayed = true;
-                audioPart1.currentTime = 0;
-                audioPart1.playbackRate = 1.0;
-                audioPart1.play().catch(e => console.log("Cần click trang web để phát âm thanh"));
-            }
-
-            if (distance <= 5000 && distance > 0) {
-                document.body.classList.add("dark-mode");
-            }
-
             if (distance <= 0) {
                 countdownEl.innerText = "CHÚC MỪNG NĂM MỚI!";
+                document.body.classList.add("dark-mode");
                 return;
             }
 
             let seconds = Math.floor(distance / 1000);
+
+            // 1. Khi đồng hồ còn 11 giây -> Bắt đầu phát câu chuẩn bị ("Chuẩn bị sẵn sàng chưa...")[span_1](start_span)[span_1](end_span)
+            if (seconds === 11 && !preparationPlayed) {
+                preparationPlayed = true;
+                mainAudio.src = "/static/chuan_bi.mp3";
+                mainAudio.playbackRate = 1.0;
+                mainAudio.play().catch(e => console.log("Cần click trang web để phát âm thanh"));
+            }
+
+            // 2. Khi đồng hồ chuyển chính xác về 5 giây -> Ép chuyển sang phát file đếm ngược ("5, 4, 3, 2, 1")[span_2](start_span)[span_2](end_span)
+            if (seconds === 5 && !countdownPlayed) {
+                countdownPlayed = true;
+                mainAudio.src = "/static/dem_nguoc.mp3";
+                mainAudio.playbackRate = 0.7; // Chỉnh tốc độ chậm rãi khớp nhịp đếm
+                mainAudio.play().catch(e => console.log("Lỗi file đếm ngược"));
+            }
+
+            // 3. Khi đồng hồ về 0 giây -> Phát câu chúc Tết ("Một năm mới bình an")[span_3](start_span)[span_3](end_span)
+            if (seconds === 0 && !greetingPlayed) {
+                greetingPlayed = true;
+                mainAudio.src = "/static/chuc_tet.mp3";
+                mainAudio.playbackRate = 1.0;
+                mainAudio.play().catch(e => console.log("Lỗi file chúc tết"));
+
+                // Khi câu chúc đọc xong -> Bật nhạc pháo hoa và bắn pháo hoa
+                mainAudio.onended = function() {
+                    if (!fireworksTriggered) {
+                        fireworksTriggered = true;
+                        fireworksAudio.currentTime = 0;
+                        fireworksAudio.play().catch(e => console.log("Lỗi phát nhạc pháo hoa"));
+                        startFireworks();
+                    }
+                };
+            }
+
+            // Hiển thị giao diện trên màn hình
             if (seconds <= 5) {
-                countdownEl.innerText = seconds; 
+                countdownEl.innerText = seconds;
+                document.body.classList.add("dark-mode");
             } else {
                 let hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
                 let minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
@@ -131,28 +131,29 @@
             }
         }
 
-        setInterval(updateTimer, 1000);
+        setInterval(updateTimer, 200); // Quét nhanh 200ms một lần để bắt chuẩn từng giây chính xác tuyệt đối
 
         function testCountdown() {
-            targetTime = new Date().getTime() + 10000;
-            audioPlayed = false;
+            // Test thử lùi về 12 giây trước mốc 0 để chạy trọn vẹn chuỗi âm thanh
+            targetTime = new Date().getTime() + 12000;
+            preparationPlayed = false;
+            countdownPlayed = false;
+            greetingPlayed = false;
             fireworksTriggered = false;
             document.body.classList.remove("dark-mode");
-            audioPart1.pause(); audioPart1.currentTime = 0;
-            audioPart2.pause(); audioPart2.currentTime = 0;
-            audioPart3.pause(); audioPart3.currentTime = 0;
+            mainAudio.pause(); mainAudio.currentTime = 0;
             fireworksAudio.pause(); fireworksAudio.currentTime = 0;
             countdownEl.innerText = "Đang chuẩn bị...";
         }
 
         function resetTest() {
             targetTime = new Date("2027-02-06T00:00:00").getTime();
-            audioPlayed = false;
+            preparationPlayed = false;
+            countdownPlayed = false;
+            greetingPlayed = false;
             fireworksTriggered = false;
             document.body.classList.remove("dark-mode");
-            audioPart1.pause(); audioPart1.currentTime = 0;
-            audioPart2.pause(); audioPart2.currentTime = 0;
-            audioPart3.pause(); audioPart3.currentTime = 0;
+            mainAudio.pause(); mainAudio.currentTime = 0;
             fireworksAudio.pause(); fireworksAudio.currentTime = 0;
             countdownEl.innerText = "Đang tải...";
         }
