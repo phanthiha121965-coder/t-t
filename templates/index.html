@@ -63,9 +63,9 @@
         </div>
     </div>
 
-    <!-- 2 File âm thanh -->
-    <audio id="tetAudio" src="tet.mp3" preload="auto"></audio>
-    <audio id="fireworksAudio" src="fireworks_sound.mp3" preload="auto"></audio>
+    <!-- 2 File âm thanh trỏ chuẩn vào thư mục static -->
+    <audio id="tetAudio" src="/static/tet.mp3" preload="auto"></audio>
+    <audio id="fireworksAudio" src="/static/fireworks_sound.mp3" preload="auto"></audio>
 
     <script>
         let targetTime = new Date("2027-02-06T00:00:00").getTime();
@@ -74,18 +74,15 @@
         const fireworksAudio = document.getElementById("fireworksAudio");
         const countdownEl = document.getElementById("countdown");
         
-        const PRE_SPEECH_DELAY = 3500; // 3.5 giây cho câu "cùng đếm nha"
+        const PRE_SPEECH_DELAY = 3500; 
         let audioPlayed = false;
         let fireworksTriggered = false;
 
-        // Khi file tet.mp3 chạy xong hoàn toàn (đã đọc xong câu "Chúc mừng năm mới!")
         tetAudio.onended = function() {
             if (!fireworksTriggered) {
                 fireworksTriggered = true;
-                // Kích hoạt tiếng pháo hoa nổ
                 fireworksAudio.currentTime = 0;
                 fireworksAudio.play().catch(e => console.log("Lỗi phát tiếng pháo hoa"));
-                // Chạy hiệu ứng pháo hoa hình ảnh
                 startFireworks();
             }
         };
@@ -96,26 +93,21 @@
 
             let triggerPoint = 5000 + PRE_SPEECH_DELAY;
 
-            // 1. Kích hoạt nhạc Tết để chạy câu dạo đầu và đếm ngược
             if (distance <= triggerPoint && distance > 0 && !audioPlayed) {
                 audioPlayed = true;
                 tetAudio.currentTime = 0;
                 tetAudio.play().catch(e => console.log("Cần click trang web để phát âm thanh"));
             }
 
-            // 2. Khi còn 3 giây cuối -> Chuyển màn hình sang nền đen
             if (distance <= 3000 && distance > 0) {
                 document.body.classList.add("dark-mode");
             }
 
-            // 3. Khi đến mốc 0 giây -> Hiện chữ chúc mừng thay vì bắn pháo hoa ngay lập tức
             if (distance <= 0) {
                 countdownEl.innerText = "CHÚC MỪNG NĂM MỚI!";
-                // Pháo hoa sẽ đợi file tetAudio phát xong câu chúc rồi mới tự động nổ thông qua hàm onended ở trên!
                 return;
             }
 
-            // Hiển thị con số đếm ngược
             let seconds = Math.ceil(distance / 1000);
             if (seconds <= 5) {
                 countdownEl.innerText = seconds; 
@@ -129,7 +121,6 @@
 
         setInterval(updateTimer, 50);
 
-        // Chức năng Admin
         function loginAdmin() {
             let pass = document.getElementById("admin-pass").value;
             if (pass === "admin123") {
@@ -160,7 +151,6 @@
             countdownEl.innerText = "Đang tải...";
         }
 
-        // Hiệu ứng Canvas Pháo Hoa
         const canvas = document.getElementById("fireworksCanvas");
         const ctx = canvas.getContext("2d");
         let particles = [];
@@ -217,5 +207,4 @@
         }
     </script>
 </body>
-  </html>
-
+</html>
