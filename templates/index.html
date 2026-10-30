@@ -30,20 +30,18 @@
             pointer-events: none; z-index: 99; 
         }
 
-        /* Màn hình chào để kích hoạt âm thanh trình duyệt */
-        #welcome-overlay {
+        /* Nút mở khóa âm thanh chống trình duyệt chặn */
+        #sound-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(139, 0, 0, 0.95); z-index: 9999;
+            background: rgba(139, 0, 0, 0.98); z-index: 9999;
             display: flex; flex-direction: column; justify-content: center; align-items: center;
         }
-        #welcome-overlay h2 { font-size: 2rem; color: #ffd700; margin-bottom: 20px; }
-        #welcome-overlay button {
-            padding: 15px 30px; font-size: 1.2rem; font-weight: bold;
-            background-color: #ff4500; color: white; border: none; border-radius: 50px;
+        #sound-overlay h2 { font-size: 1.8rem; color: #ffd700; margin-bottom: 20px; text-align: center; padding: 0 20px; }
+        #sound-overlay button {
+            padding: 15px 35px; font-size: 1.3rem; font-weight: bold;
+            background-color: #28a745; color: white; border: none; border-radius: 50px;
             cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            transition: transform 0.2s;
         }
-        #welcome-overlay button:hover { transform: scale(1.05); background-color: #ff6347; }
 
         .control-panel {
             position: fixed; bottom: 20px; right: 20px;
@@ -52,18 +50,15 @@
         }
         .control-panel button { padding: 8px 12px; margin-top: 5px; border-radius: 5px; border: none; font-size: 0.9rem; font-weight: bold; cursor: pointer; }
         .btn-test { background-color: #28a745; color: white; }
-        .btn-test:hover { background-color: #218838; }
         .btn-reset { background-color: #dc3545; color: white; margin-left: 5px; }
-        .btn-reset:hover { background-color: #c82333; }
-        .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
-    <!-- Lớp phủ bắt buộc click để mở khóa âm thanh trình duyệt -->
-    <div id="welcome-overlay">
-        <h2>🎉 CHÀO MỪNG ĐẾN VỚI ĐẾM NGƯỢC TẾT 2027 🎉</h2>
-        <button onclick="unlockAudio()">🔊 Bấm Vào Đây Để Vào Web</button>
+    <!-- Bảng bấm mở khóa âm thanh -->
+    <div id="sound-overlay">
+        <h2>🔊 BẤM VÀO ĐÂY ĐỂ BẬT ÂM THANH & VÀO WEB 🔊</h2>
+        <button onclick="enableSound()">Vào Web Ngay</button>
     </div>
 
     <h1>ĐẾM NGƯỢC TẾT ĐINH MÙI 2027</h1>
@@ -74,69 +69,80 @@
     <!-- Bảng Thử Nghiệm Nhanh -->
     <div class="control-panel">
         <h3 style="color: #ffd700; font-size: 1rem;">Bảng Thử Nghiệm</h3>
-        <p style="margin-top: 3px; font-size: 0.75rem;">Test hiệu ứng âm thanh & pháo hoa:</p>
         <button class="btn-test" onclick="testCountdown()">▶ Test Ngay</button>
         <button class="btn-reset" onclick="resetTest()">Reset</button>
     </div>
 
-    <!-- 2 File âm thanh chuẩn chỉnh -->
-    <audio id="tetAudio" src="/static/tet.mp3" preload="auto"></audio>
+    <!-- Gọi đúng tên 3 file âm thanh đã cắt + nhạc pháo hoa -->
+    <audio id="mainAudio" preload="auto"></audio>
     <audio id="fireworksAudio" src="/static/nhac_tet.mp3" preload="auto"></audio>
 
     <script>
         let targetTime = new Date("2027-02-06T00:00:00").getTime();
         
-        const tetAudio = document.getElementById("tetAudio");
+        const mainAudio = document.getElementById("mainAudio");
         const fireworksAudio = document.getElementById("fireworksAudio");
         const countdownEl = document.getElementById("countdown");
         
-        let audioPlayed = false;
+        let soundAllowed = false;
+        let audioState = 0; // 0: chưa chạy, 1: đang chạy chuẩn bị, 2: đang đếm ngược, 3: đang chúc tết
         let fireworksTriggered = false;
-        let soundUnlocked = false;
 
-        // Hàm mở khóa âm thanh khi người dùng bấm vào nút chào mừng
-        function unlockAudio() {
-            document.getElementById("welcome-overlay").classList.add("hidden");
-            soundUnlocked = true;
+        function enableSound() {
+            document.getElementById("sound-overlay").style.display = "none";
+            soundAllowed = true;
             
-            // Kích hoạt nạp sẵn âm thanh để sẵn sàng chạy
-            tetAudio.play().then(() => {
-                tetAudio.pause();
-                tetAudio.currentTime = 0;
-            }).catch(e => console.log("Mở khóa âm thanh thành công"));
+            // Mở khóa audio cho trình duyệt
+            mainAudio.play().then(() => { mainAudio.pause(); mainAudio.currentTime = 0; }).catch(e => {});
+            fireworksAudio.play().then(() => { fireworksAudio.pause(); fireworksAudio.currentTime = 0; }).catch(e => {});
         }
 
-        tetAudio.onended = function() {
-            if (!fireworksTriggered) {
-                fireworksTriggered = true;
-                fireworksAudio.currentTime = 0;
-                fireworksAudio.play().catch(e => console.log("Lỗi phát nhạc pháo hoa"));
-                startFireworks();
+        // Xử lý chuỗi phát nối tiếp 3 file âm thanh tự động hoàn hảo
+        mainAudio.onended = function() {
+            if (audioState === 1) {
+                // Hết chuan_bi.mp3 -> Chuyển sang dem_nguoc.mp3
+                audioState = 2;
+                mainAudio.src = "/static/dem_nguoc.mp3";
+                mainAudio.playbackRate = 0.7; // Đọc chậm rãi khớp nhịp đếm
+                mainAudio.play().catch(e => console.log("Lỗi dem_nguoc"));
+            } else if (audioState === 2) {
+                // Hết dem_nguoc.mp3 -> Chuyển sang chuc_tet.mp3
+                audioState = 3;
+                mainAudio.src = "/static/chuc_tet.mp3";
+                mainAudio.playbackRate = 1.0;
+                mainAudio.play().catch(e => console.log("Lỗi chuc_tet"));
+            } else if (audioState === 3) {
+                // Đọc xong câu chúc -> Bật nhạc pháo hoa và bắn pháo hoa tưng bừng!
+                if (!fireworksTriggered) {
+                    fireworksTriggered = true;
+                    fireworksAudio.currentTime = 0;
+                    fireworksAudio.play().catch(e => console.log("Lỗi nhạc pháo hoa"));
+                    startFireworks();
+                }
             }
         };
 
         function updateTimer() {
-            if (!soundUnlocked) return; // Chưa bấm mở khóa thì chưa chạy đồng hồ âm thanh
+            if (!soundAllowed) return;
 
             let now = new Date().getTime();
             let distance = targetTime - now;
             let triggerPoint = 10000; 
 
-            if (distance <= triggerPoint && distance > 0 && !audioPlayed) {
-                audioPlayed = true;
-                tetAudio.currentTime = 0;
-                tetAudio.playbackRate = 1.0;
-                tetAudio.play().catch(e => console.log("Lỗi phát tetAudio"));
+            // Bắt đầu phát file đầu tiên (chuan_bi.mp3)[span_1](start_span)[span_1](end_span)
+            if (distance <= triggerPoint && distance > 0 && audioState === 0) {
+                audioState = 1;
+                mainAudio.src = "/static/chuan_bi.mp3";
+                mainAudio.playbackRate = 1.0;
+                mainAudio.play().catch(e => console.log("Lỗi phát chuan_bi"));
             }
 
             if (distance <= 5000 && distance > 0) {
-                tetAudio.playbackRate = 0.65; // Giảm tốc độ 5 giây cuối cho thong thả
                 document.body.classList.add("dark-mode");
             }
 
             if (distance <= 0) {
                 countdownEl.innerText = "CHÚC MỪNG NĂM MỚI!";
-                tetAudio.playbackRate = 1.0;
                 return;
             }
 
@@ -154,23 +160,23 @@
         setInterval(updateTimer, 1000);
 
         function testCountdown() {
-            soundUnlocked = true;
-            document.getElementById("welcome-overlay").classList.add("hidden");
+            soundAllowed = true;
+            document.getElementById("sound-overlay").style.display = "none";
             targetTime = new Date().getTime() + 10000;
-            audioPlayed = false;
+            audioState = 0;
             fireworksTriggered = false;
             document.body.classList.remove("dark-mode");
-            tetAudio.pause(); tetAudio.currentTime = 0;
+            mainAudio.pause(); mainAudio.currentTime = 0;
             fireworksAudio.pause(); fireworksAudio.currentTime = 0;
             countdownEl.innerText = "Đang chuẩn bị...";
         }
 
         function resetTest() {
             targetTime = new Date("2027-02-06T00:00:00").getTime();
-            audioPlayed = false;
+            audioState = 0;
             fireworksTriggered = false;
             document.body.classList.remove("dark-mode");
-            tetAudio.pause(); tetAudio.currentTime = 0;
+            mainAudio.pause(); mainAudio.currentTime = 0;
             fireworksAudio.pause(); fireworksAudio.currentTime = 0;
             countdownEl.innerText = "Đang tải...";
         }
