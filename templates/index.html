@@ -42,9 +42,18 @@
             transition: background 1s ease;
         }
 
-        /* Chế độ nền đen hoàn toàn khi pháo hoa nổ */
-        body.fireworks-bg {
+        /* Chế độ nền đen hoàn toàn và ẩn các thành phần khi pháo hoa nổ */
+        body.fireworks-mode {
             background: #000000 !important;
+        }
+        body.fireworks-mode #mainHeader,
+        body.fireworks-mode #mainFooter,
+        body.fireworks-mode #countdownSection,
+        body.fireworks-mode #actionButtons,
+        body.fireworks-mode .lantern {
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
         }
 
         .gold-text-gradient {
@@ -60,6 +69,21 @@
             -webkit-backdrop-filter: blur(20px);
             border: 1px solid rgba(247, 208, 70, 0.25);
             box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 249, 210, 0.3);
+            transition: all 0.5s ease;
+        }
+
+        /* Khi vào chế độ test/pháo hoa, khung chữ phóng to và nổi bật ở giữa màn hình đen */
+        body.fireworks-mode #wishCardContainer {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(1.15);
+            width: 90%;
+            max-width: 650px;
+            z-index: 50;
+            background: rgba(0, 0, 0, 0.85);
+            border: 2px solid #F7D046;
+            box-shadow: 0 0 40px rgba(247, 208, 70, 0.4);
         }
 
         .time-card-bg {
@@ -88,29 +112,6 @@
         }
         .glass-btn:hover { background: rgba(247, 208, 70, 0.2); transform: translateY(-2px); }
 
-        /* Hiệu ứng phóng to số đếm ngược giữa màn hình */
-        #giantNumberDisplay {
-            position: fixed;
-            inset: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-family: 'Cinzel', serif;
-            font-size: 14rem;
-            font-weight: 900;
-            color: #FFE875;
-            text-shadow: 0 0 50px rgba(247, 208, 70, 0.8), 0 0 100px rgba(255, 0, 0, 0.5);
-            z-index: 40;
-            pointer-events: none;
-            opacity: 0;
-            transform: scale(0.5);
-            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        #giantNumberDisplay.active {
-            opacity: 1;
-            transform: scale(1);
-        }
-
         /* Hiệu ứng đánh chữ (Typing cursor) */
         .typing-cursor::after {
             content: '|';
@@ -120,6 +121,12 @@
             0%, 100% { opacity: 1; }
             50% { opacity: 0; }
         }
+
+        @keyframes swing {
+            0%, 100% { transform: rotate(-5deg); }
+            50% { transform: rotate(5deg); }
+        }
+        .lantern { transform-origin: top center; animation: swing 3s ease-in-out infinite; }
 
         #sound-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
@@ -145,16 +152,27 @@
         </div>
     </div>
 
-    <!-- SỐ ĐẾM NGƯỢC KHỔNG LỒ GIỮA MÀN HÌNH -->
-    <div id="giantNumberDisplay"></div>
-
     <!-- CANVAS LAYERS -->
     <canvas id="dustCanvas" class="fixed inset-0 pointer-events-none z-0"></canvas>
     <canvas id="petalsCanvas" class="fixed inset-0 pointer-events-none z-10"></canvas>
-    <canvas id="fireworksCanvas" class="fixed inset-0 pointer-events-none z-20"></canvas>
+    <canvas id="fireworksCanvas" class="fixed inset-0 pointer-events-none z-30"></canvas>
+
+    <!-- Đèn lồng trang trí hai bên -->
+    <div class="fixed top-0 left-6 z-20 pointer-events-none hidden sm:block lantern">
+        <div class="w-1 h-16 bg-yellow-500 mx-auto"></div>
+        <div class="w-14 h-20 bg-red-600 rounded-2xl border-2 border-yellow-400 flex items-center justify-center shadow-lg">
+            <span class="text-yellow-300 font-serif font-bold">Phúc</span>
+        </div>
+    </div>
+    <div class="fixed top-0 right-6 z-20 pointer-events-none hidden sm:block lantern" style="animation-delay: -1.5s;">
+        <div class="w-1 h-16 bg-yellow-500 mx-auto"></div>
+        <div class="w-14 h-20 bg-red-600 rounded-2xl border-2 border-yellow-400 flex items-center justify-center shadow-lg">
+            <span class="text-yellow-300 font-serif font-bold">Lộc</span>
+        </div>
+    </div>
 
     <!-- Header Controls -->
-    <header id="mainHeader" class="relative z-30 w-full max-w-7xl mx-auto px-6 pt-6 flex justify-between items-center transition-opacity duration-500">
+    <header id="mainHeader" class="relative z-35 w-full max-w-7xl mx-auto px-6 pt-6 flex justify-between items-center transition-opacity duration-500">
         <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-full border border-gold-400/40 bg-ruby-900/60 flex items-center justify-center shadow-lg">
                 <i class="fa-solid fa-dragon text-gold-400 text-lg"></i>
@@ -171,35 +189,225 @@
     </header>
 
     <!-- Main Hero Countdown Section -->
-    <main id="mainContent" class="relative z-30 flex-1 flex flex-col items-center justify-center px-4 py-8 transition-opacity duration-500">
+    <main class="relative z-35 flex-1 flex flex-col items-center justify-center px-4 py-8">
         <div class="w-full max-w-4xl mx-auto text-center">
             
-            <div class="inline-flex items-center gap-2 px-5 py-1.5 rounded-full bg-ruby-900/80 border border-gold-500/30 text-gold-300 text-xs font-semibold tracking-[0.2em] uppercase mb-6 shadow-xl backdrop-blur-md">
-                <span class="w-1.5 h-1.5 rounded-full bg-gold-400 animate-pulse"></span>
-                Thời Gian Đếm Ngược Đến Giao Thừa
+            <div id="countdownSection">
+                <div class="inline-flex items-center gap-2 px-5 py-1.5 rounded-full bg-ruby-900/80 border border-gold-500/30 text-gold-300 text-xs font-semibold tracking-[0.2em] uppercase mb-6 shadow-xl backdrop-blur-md">
+                    <span class="w-1.5 h-1.5 rounded-full bg-gold-400 animate-pulse"></span>
+                    Thời Gian Đếm Ngược Đến Giao Thừa
+                </div>
+
+                <h1 class="text-4xl sm:text-6xl md:text-7xl font-extrabold font-serif tracking-tight mb-3 leading-tight">
+                    <span class="gold-text-gradient block drop-shadow-2xl">MỪNG XUÂN ĐINH MÙI</span>
+                </h1>
+                <p class="text-amber-100/70 text-sm sm:text-base font-light italic mb-10 tracking-wide">
+                    Mùng 1 Tết: <span class="text-gold-300 font-semibold">Thứ Bảy, 06 Tháng 02, 2027</span> (Dương Lịch)
+                </p>
+
+                <!-- Countdown Grid -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 max-w-3xl mx-auto mb-10">
+                    <div class="time-card-bg aspect-[4/4.5] rounded-2xl flex flex-col items-center justify-center relative overflow-hidden">
+                        <span id="days" class="text-4xl sm:text-6xl md:text-7xl font-extrabold font-display gold-text-gradient">00</span>
+                        <div class="w-8 h-[1px] bg-gold-500/30 my-1"></div>
+                        <span class="text-[10px] sm:text-xs uppercase tracking-[0.25em] text-gold-400/80 font-bold">Ngày</span>
+                    </div>
+                    <div class="time-card-bg aspect-[4/4.5] rounded-2xl flex flex-col items-center justify-center relative overflow-hidden">
+                        <span id="hours" class="text-4xl sm:text-6xl md:text-7xl font-extrabold font-display gold-text-gradient">00</span>
+                        <div class="w-8 h-[1px] bg-gold-500/30 my-1"></div>
+                        <span class="text-[10px] sm:text-xs uppercase tracking-[0.25em] text-gold-400/80 font-bold">Giờ</span>
+                    </div>
+                    <div class="time-card-bg aspect-[4/4.5] rounded-2xl flex flex-col items-center justify-center relative overflow-hidden">
+                        <span id="minutes" class="text-4xl sm:text-6xl md:text-7xl font-extrabold font-display gold-text-gradient">00</span>
+                        <div class="w-8 h-[1px] bg-gold-500/30 my-1"></div>
+                        <span class="text-[10px] sm:text-xs uppercase tracking-[0.25em] text-gold-400/80 font-bold">Phút</span>
+                    </div>
+                    <div class="time-card-bg aspect-[4/4.5] rounded-2xl flex flex-col items-center justify-center relative overflow-hidden border-gold-400/60 shadow-lg">
+                        <span id="seconds" class="text-4xl sm:text-6xl md:text-7xl font-extrabold font-display text-red-400">00</span>
+                        <div class="w-8 h-[1px] bg-gold-500/30 my-1"></div>
+                        <span class="text-[10px] sm:text-xs uppercase tracking-[0.25em] text-red-300/80 font-bold">Giây</span>
+                    </div>
+                </div>
             </div>
 
-            <h1 class="text-4xl sm:text-6xl md:text-7xl font-extrabold font-serif tracking-tight mb-3 leading-tight">
-                <span class="gold-text-gradient block drop-shadow-2xl">MỪNG XUÂN ĐINH MÙI</span>
-            </h1>
-            <p class="text-amber-100/70 text-sm sm:text-base font-light italic mb-10 tracking-wide">
-                Mùng 1 Tết: <span class="text-gold-300 font-semibold">Thứ Bảy, 06 Tháng 02, 2027</span> (Dương Lịch)
-            </p>
+            <!-- Khung Lời Chúc / Đếm Ngược Trung Tâm (Phóng to khi test) -->
+            <div id="wishCardContainer" class="glass-panel max-w-2xl mx-auto rounded-3xl p-6 sm:p-10 relative overflow-hidden mb-8 shadow-2xl">
+                <i class="fa-solid fa-quote-left text-2xl text-gold-500/30 mb-2 block"></i>
+                <p id="wishDisplayText" class="font-serif italic text-xl sm:text-3xl text-gold-100 font-medium leading-relaxed min-h-[4rem] flex items-center justify-center px-4">
+                    "Vạn sự như ý - Tấn tài tấn lộc - Xuân Đinh Mùi rạng rỡ huy hoàng!"
+                </p>
+                <i class="fa-solid fa-quote-right text-2xl text-gold-500/30 mt-2 block ml-auto"></i>
+            </div>
 
-            <!-- Countdown Grid -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 max-w-3xl mx-auto mb-12">
-                <div class="time-card-bg aspect-[4/4.5] rounded-2xl flex flex-col items-center justify-center relative overflow-hidden">
-                    <span id="days" class="text-4xl sm:text-6xl md:text-7xl font-extrabold font-display gold-text-gradient">00</span>
-                    <div class="w-8 h-[1px] bg-gold-500/30 my-1"></div>
-                    <span class="text-[10px] sm:text-xs uppercase tracking-[0.25em] text-gold-400/80 font-bold">Ngày</span>
-                </div>
-                <div class="time-card-bg aspect-[4/4.5] rounded-2xl flex flex-col items-center justify-center relative overflow-hidden">
-                    <span id="hours" class="text-4xl sm:text-6xl md:text-7xl font-extrabold font-display gold-text-gradient">00</span>
-                    <div class="w-8 h-[1px] bg-gold-500/30 my-1"></div>
-                    <span class="text-[10px] sm:text-xs uppercase tracking-[0.25em] text-gold-400/80 font-bold">Giờ</span>
-                </div>
-                <div class="time-card-bg aspect-[4/4.5] rounded-2xl flex flex-col items-center justify-center relative overflow-hidden">
-                    <span id="minutes" class="text-4xl sm:text-6xl md:text-7xl font-extrabold font-display gold-text-gradient">00</span>
+            <div id="actionButtons" class="flex flex-wrap justify-center items-center gap-4 sm:gap-6 transition-opacity duration-500">
+                <button id="drawQueBtn" class="gold-btn px-8 py-4 rounded-full flex items-center gap-3 text-sm font-bold uppercase tracking-wider">
+                    <i class="fa-solid fa-scroll text-lg"></i> Rút Quẻ Lộc Xuân
+                </button>
+                <button id="fireworksBtn" class="glass-btn px-8 py-4 rounded-full flex items-center gap-3 text-sm font-bold uppercase tracking-wider">
+                    <i class="fa-solid fa-fireworks text-lg text-gold-400"></i> Test Pháo Hoa Ngay
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <footer id="mainFooter" class="relative z-35 py-6 text-center text-xs text-gold-400/50 font-light tracking-widest uppercase transition-opacity duration-500">
+        <p>❖ Đón Xuân Đinh Mùi 2027 • An Khang Thịnh Vượng ❖</p>
+    </footer>
+
+    <!-- AUDIO CHUẨN GỐC TET.MP3 -->
+    <audio id="tetAudio" src="/static/tet.mp3" preload="auto"></audio>
+
+    <!-- JAVASCRIPT ENGINE -->
+    <script>
+        const TET_TARGET_DATE = new Date('February 06, 2027 00:00:00').getTime();
+        const tetAudio = document.getElementById('tetAudio');
+        const wishTextEl = document.getElementById('wishDisplayText');
+        
+        let soundAllowed = false;
+        let isTesting = false;
+        let fireworksStarted = false;
+
+        function enableSoundAndEnter() {
+            document.getElementById('sound-overlay').style.opacity = '0';
+            setTimeout(() => { document.getElementById('sound-overlay').style.display = 'none'; }, 500);
+            soundAllowed = true;
+            tetAudio.play().then(() => { tetAudio.pause(); tetAudio.currentTime = 0; }).catch(e => {});
+        }
+
+        // --- HIỆU ỨNG ĐÁNH CHỮ (TYPING EFFECT) KHÔNG BỊ GHI ĐÈ LỖI ---
+        let typingTimeout = null;
+        function typeWriter(element, text, speed = 45) {
+            if (typingTimeout) clearTimeout(typingTimeout);
+            element.innerText = "";
+            element.classList.add("typing-cursor");
+            let i = 0;
+            function typing() {
+                if (i < text.length) {
+                    element.innerText += text.charAt(i);
+                    i++;
+                    typingTimeout = setTimeout(typing, speed);
+                } else {
+                    element.classList.remove("typing-cursor");
+                }
+            }
+            typing();
+        }
+
+        // --- SYNC AUDIO THỜI GIAN THỰC VỚI FILE tet.mp3 ---
+        let lastLoggedText = "";
+        tetAudio.ontimeupdate = function() {
+            if (!isTesting && !soundAllowed) return;
+            let t = tetAudio.currentTime;
+
+            let currentTextToType = "";
+            if (t < 2.5) {
+                currentTextToType = "Sẵn sàng đón giao thừa...";
+            } else if (t >= 2.5 && t < 3.5) {
+                currentTextToType = "5";
+            } else if (t >= 3.5 && t < 4.5) {
+                currentTextToType = "4";
+            } else if (t >= 4.5 && t < 5.5) {
+                currentTextToType = "3";
+            } else if (t >= 5.5 && t < 6.5) {
+                currentTextToType = "2";
+            } else if (t >= 6.5 && t < 7.5) {
+                currentTextToType = "1";
+            } else if (t >= 7.5 && t < 11.2) {
+                currentTextToType = "✨ Chúc Mừng Năm Mới - Một Năm Mới Bình An ✨";
+            } else if (t >= 11.2) {
+                // VỪA DỨT CÂU CHÚC -> CHUYỂN NỀN ĐEN + BÙNG NỔ PHÁO HOA!
+                if (!fireworksStarted) {
+                    fireworksStarted = true;
+                    document.body.classList.add('fireworks-mode');
+                    currentTextToType = "🎉 CHÚC MỪNG NĂM MỚI ĐINH MÙI 2027! 🎉";
+                    startFireworksEngine();
+                } else {
+                    currentTextToType = "🎉 CHÚC MỪNG NĂM MỚI ĐINH MÙI 2027! 🎉";
+                }
+            }
+
+            if (currentTextToType && currentTextToType !== lastLoggedText) {
+                lastLoggedText = currentTextToType;
+                typeWriter(wishTextEl, currentTextToType);
+            }
+        };
+
+        // KHI HẾT BÀI NHẠC -> TỰ ĐỘNG THU DÒN, TRẢ VỀ GIAO DIỆN CHÍNH
+        tetAudio.onended = function() {
+            document.body.classList.remove('fireworks-mode');
+            fireworksStarted = false;
+            isTesting = false;
+            lastLoggedText = "";
+            fireworks = [];
+            particles = [];
+            wishTextEl.innerText = "Vạn sự như ý - Tấn tài tấn lộc - Xuân Đinh Mùi rạng rỡ huy hoàng!";
+        };
+
+        const daysEl = document.getElementById('days');
+        const hoursEl = document.getElementById('hours');
+        const minutesEl = document.getElementById('minutes');
+        const secondsEl = document.getElementById('seconds');
+
+        function updateCountdown() {
+            if (!soundAllowed || isTesting) return;
+            const now = new Date().getTime();
+            const diff = TET_TARGET_DATE - now;
+
+            if (diff <= 0) {
+                if (!fireworksStarted && tetAudio.paused) {
+                    tetAudio.currentTime = 0;
+                    tetAudio.play().catch(e => {});
+                    isTesting = true;
+                }
+                return;
+            }
+
+            const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const s = Math.floor((diff % (1000 * 60)) / 1000);
+
+            daysEl.innerText = d < 10 ? '0' + d : d;
+            hoursEl.innerText = h < 10 ? '0' + h : h;
+            minutesEl.innerText = m < 10 ? '0' + m : m;
+            secondsEl.innerText = s < 10 ? '0' + s : s;
+
+            if (d === 0 && h === 0 && m === 0 && s <= 12) {
+                if (tetAudio.paused) {
+                    tetAudio.currentTime = 0;
+                    tetAudio.play().catch(e => {});
+                    isTesting = true;
+                }
+            }
+        }
+        setInterval(updateCountdown, 200);
+
+        // Nút Test Pháo Hoa Nhanh
+        document.getElementById('fireworksBtn').addEventListener('click', () => {
+            soundAllowed = true;
+            isTesting = true;
+            fireworksStarted = false;
+            lastLoggedText = "";
+            tetAudio.currentTime = 0;
+            tetAudio.play().catch(e => console.log(e));
+            particles = [];
+            fireworks = [];
+        });
+
+
+        /* ==========================================================================
+           CANVAS ENGINES (Dust, Petals, Pháo hoa tinh tế)
+           ========================================================================== */
+        const dustCanvas = document.getElementById('dustCanvas');
+        const ctxDust = dustCanvas.getContext('2d');
+        let dWidth = dustCanvas.width = window.innerWidth;
+        let dHeight = dustCanvas.height = window.innerHeight;
+
+        class DustParticle {
+            constructor() { this.reset(); }
+            reset() {
+                this.x = Math.random() * dWidth;
+                this.ym:text-6xl md:text-7xl font-extrabold font-display gold-text-gradient">00</span>
                     <div class="w-8 h-[1px] bg-gold-500/30 my-1"></div>
                     <span class="text-[10px] sm:text-xs uppercase tracking-[0.25em] text-gold-400/80 font-bold">Phút</span>
                 </div>
