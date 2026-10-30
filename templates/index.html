@@ -92,18 +92,17 @@
 
             let triggerPoint = 10000; 
 
+            // 1. Kích hoạt phát nhạc ở đoạn đầu với tốc độ bình thường (1.0)
             if (distance <= triggerPoint && distance > 0 && !audioPlayed) {
                 audioPlayed = true;
                 tetAudio.currentTime = 0;
-                
-                // CHỈNH TỐC ĐỘ NHẠC TẾT: 0.8 là chậm lại 80% (nghe vừa vặn, rõ tiếng). 
-                // Nếu thấy vẫn nhanh có thể đổi thành 0.75, hoặc nhanh hơn thì đổi thành 0.85
-                tetAudio.playbackRate = 0.8; 
-
+                tetAudio.playbackRate = 1.0; // Tốc độ bình thường cho đoạn đầu
                 tetAudio.play().catch(e => console.log("Cần click trang web để phát âm thanh"));
             }
 
-            if (distance <= 3000 && distance > 0) {
+            // 2. KHI VÀO 5 GIÂY CUỐI (<= 5000ms): Tự động hãm tốc độ nhạc chậm lại (0.65) để đếm 5 4 3 2 1 thong thả, rõ từng tiếng!
+            if (distance <= 5000 && distance > 0) {
+                tetAudio.playbackRate = 0.65; // Giảm tốc độ xuống để đọc chậm rãi 5 giây cuối
                 document.body.classList.add("dark-mode");
             }
 
