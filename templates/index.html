@@ -54,6 +54,7 @@
 </head>
 <body>
 
+    <!-- Mở khóa âm thanh trình duyệt -->
     <div id="sound-overlay">
         <h2>🔊 BẤM VÀO ĐÂY ĐỂ BẬT ÂM THANH & VÀO WEB 🔊</h2>
         <button onclick="enableSound()">Vào Web Ngay</button>
@@ -64,12 +65,14 @@
 
     <canvas id="fireworksCanvas"></canvas>
 
+    <!-- Bảng Thử Nghiệm -->
     <div class="control-panel">
         <h3 style="color: #ffd700; font-size: 1rem;">Bảng Thử Nghiệm</h3>
         <button class="btn-test" onclick="testCountdown()">▶ Test Ngay</button>
         <button class="btn-reset" onclick="resetTest()">Reset</button>
     </div>
 
+    <!-- DÙNG ĐÚNG 1 FILE tet.mp3 DUY NHẤT -->
     <audio id="tetAudio" src="/static/tet.mp3" preload="auto"></audio>
 
     <script>
@@ -88,45 +91,62 @@
             tetAudio.play().then(() => { tetAudio.pause(); tetAudio.currentTime = 0; }).catch(e => {});
         }
 
+        // Khi file tetAudio chạy xong từ đầu đến cuối (hết câu chúc và nhạc nền trong file) -> Pháo hoa nổ rợp trời!
+        tetAudio.onended = function() {
+            if (!fireworksStarted) {
+                fireworksStarted = true;
+                countdownEl.innerText = "CHÚC MỪNG NĂM MỚI!";
+                startFireworks();
+            }
+        };
+
         function updateTimer() {
             if (!soundAllowed) return;
 
             let now = new Date().getTime();
             let distance = targetTime - now;
 
-            // Nếu đang chạy test hoặc đến giờ giao thừa
             if (isTesting) {
-                // Khi file tetAudio đang chạy, ta có thể căn cứ vào currentTime của nó để đổi số trên màn hình cho KHỚP TUYỆT ĐỐI
-                // Giả sử file tet.mp3 của ông dài X giây, đoạn đếm ngược 5-4-3-2-1 nằm ở cuối file. 
-                // Cách an toàn nhất khi dùng đúng 1 file audio có sẵn giọng đọc là hiển thị thời gian thực bình thường, 
-                // nhưng vào 10 giây cuối thì ép đồng hồ đếm lùi chuẩn theo giây của audio.
+                // Khi đang test, ta để file tetAudio tự chạy. 
+                // Khi gần hết file (hoặc khi hết bài), sự kiện onended sẽ bật pháo hoa.
+                // Trong lúc chạy test, chuyển màn hình sang nền đen cho có không khí giao thừa.
+                document.body.classList.add("dark-mode");
+                if (!tetAudio.paused) {
+                    // Có thể hiển thị trạng thái đang phát nhạc
+                    countdownEl.innerText = "Đang phát Giao Thừa...";
+                }
+                return;
             }
 
             if (distance <= 0) {
                 countdownEl.innerText = "CHÚC MỪNG NĂM MỚI!";
                 document.body.classList.add("dark-mode");
-                if (!fireworksStarted) {
-                    fireworksStarted = true;
-                    startFireworks();
+                if (!fireworksStarted && tetAudio.paused) {
+                    tetAudio.currentTime = 0;
+                    tetAudio.play().catch(e => {});
                 }
                 return;
             }
 
             let seconds = Math.floor(distance / 1000);
 
-            // Khi còn 10 giây cuối -> Bắt đầu phát file tetAudio và hiển thị đếm ngược bám sát thời gian thực
-            let triggerSecs = 10; // Thay đổi số này nếu file tet.mp3 của ông dài hơn hoặc ngắn hơn
+            // Khi đến thời điểm cần bắt đầu chạy file tetAudio (ví dụ trước 15 giây hoặc tùy ý ông)
+            let triggerSecs = 15; // Chỉnh thời gian này khớp với độ dài thực tế của file tet.mp3
             
-            if (seconds <= 10 && seconds > 0) {
+            if (seconds <= triggerSecs && seconds > 0) {
                 document.body.classList.add("dark-mode");
-                countdownEl.innerText = seconds; // Hiển thị chuẩn xác từng giây không lệch
                 
                 if (tetAudio.paused && !isTesting) {
                     tetAudio.currentTime = 0;
                     tetAudio.play().catch(e => {});
-                    isTesting = true;
                 }
-            } else if (seconds > 10) {
+                
+                // Hiển thị đếm ngược thời gian thực còn lại
+                let hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                let minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                let secs = Math.floor((distance % (1000 * 60)) / 1000);
+                countdownEl.innerText = `${hours}h ${minutes}m ${secs}s`;
+            } else if (seconds > triggerSecs) {
                 let hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
                 let minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
                 let secs = Math.floor((distance % (1000 * 60)) / 1000);
@@ -140,11 +160,9 @@
             soundAllowed = true;
             document.getElementById("sound-overlay").style.display = "none";
             
-            // Chạy thử ngay 10 giây cuối để test khớp hình và tiếng
-            targetTime = new Date().getTime() + 10500; 
             isTesting = true;
             fireworksStarted = false;
-            document.body.classList.remove("dark-mode");
+            document.body.classList.add("dark-mode");
             
             tetAudio.currentTime = 0;
             tetAudio.play().catch(e => console.log("Lỗi phát audio"));
