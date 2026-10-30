@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đếm Ngược Tết 2027</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background-color: #8b0000;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-align: center;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: background-color 1s ease;
+            overflow: hidden;
+        }
+        
+        body.dark-mode { background-color: #000000 !important; }
+        
+        h1 { font-size: 2.5rem; margin-bottom: 20px; color: #ffd700; text-shadow: 2px 2px 4px #000; }
+        #countdown { font-size: 5rem; font-weight: bold; color: #ffffff; text-shadow: 0 0 20px #ff0000; }
+        
+        #fireworksCanvas { 
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
+            pointer-events: none; z-index: 99; 
+        }
+
+        .admin-panel {
+            position: fixed; bottom: 20px; right: 20px;
+            background: rgba(0, 0, 0, 0.85); border: 2px solid #ffd700;
+            border-radius: 10px; padding: 15px; color: #fff; z-index: 1000; text-align: left;
+        }
+        .admin-panel input, .admin-panel button { padding: 8px; margin-top: 5px; border-radius: 5px; border: none; font-size: 0.9rem; }
+        .admin-panel button { background-color: #28a745; color: white; cursor: pointer; font-weight: bold; }
+        .admin-panel button:hover { background-color: #218838; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <h1>ĐẾM NGƯỢC TẾT ĐINH MÙI 2027</h1>
+    <div id="countdown">Đang tải...</div>
+
+    <canvas id="fireworksCanvas"></canvas>
+
+    <!-- Admin Panel -->
+    <div class="admin-panel">
+        <div id="login-form">
+            <h3>Đăng nhập Admin</h3>
+            <input type="password" id="admin-pass" placeholder="Nhập mật khẩu">
+            <button onclick="loginAdmin()">Vào Admin</button>
+        </div>
+        <div id="admin-controls" class="hidden">
+            <h3 style="color: #ffd700;">Quản Trị Admin</h3>
+            <p style="margin-top: 5px; font-size: 0.8rem;">Test đếm ngược -> Lời chúc -> Pháo hoa:</p>
+            <button onclick="testCountdown()">▶ Test Ngay</button>
+            <button onclick="resetTest()" style="background-color: #dc3545; margin-left: 5px;">Reset</button>
+        </div>
+    </div>
+
+    <!-- 2 File âm thanh -->
+    <audio id="tetAudio" src="tet.mp3" preload="auto"></audio>
+    <audio id="fireworksAudio" src="fireworks_sound.mp3" preload="auto"></audio>
+
+    <script>
+        let targetTime = new Date("2027-02-06T00:00:00").getTime();
+        
+        const tetAudio = document.getElementById("tetAudio");
+        const fireworksAudio = document.getElementById("fireworksAudio");
+        const countdownEl = document.getElementById("countdown");
+        
+        const PRE_SPEECH_DELAY = 3500; // 3.5 giây cho câu "cùng đếm nha"
+        let audioPlayed = false;
+        let fireworksTriggered = false;
+
+        // Khi file tet.mp3 chạy xong hoàn toàn (đã đọc xong câu "Chúc mừng năm mới!")
+        tetAudio.onended = function() {
+            if (!fireworksTriggered) {
+                fireworksTriggered = true;
+                // Kích hoạt tiếng pháo hoa nổ
+                fireworksAudio.currentTime = 0;
+                fireworksAudio.play().catch(e => console.log("Lỗi phát tiếng pháo hoa"));
+                // Chạy hiệu ứng pháo hoa hình ảnh
+                startFireworks();
+            }
+        };
+
+        function updateTimer() {
+            let now = new Date().getTime();
+            let distance = targetTime - now;
+
+            let triggerPoint = 5000 + PRE_SPEECH_DELAY;
+
+            // 1. Kích hoạt nhạc Tết để chạy câu dạo đầu và đếm ngược
+            if (distance <= triggerPoint && distance > 0 && !audioPlayed) {
+                audioPlayed = true;
+                tetAudio.currentTime = 0;
+                tetAudio.play().catch(e => console.log("Cần click trang web để phát âm thanh"));
+            }
+
+            // 2. Khi còn 3 giây cuối -> Chuyển màn hình sang nền đen
+            if (distance <= 3000 && distance > 0) {
+                document.body.classList.add("dark-mode");
+            }
+
+            // 3. Khi đến mốc 0 giây -> Hiện chữ chúc mừng thay vì bắn pháo hoa ngay lập tức
+            if (distance <= 0) {
+                countdownEl.innerText = "CHÚC MỪNG NĂM MỚI!";
+                // Pháo hoa sẽ đợi file tetAudio phát xong câu chúc rồi mới tự động nổ thông qua hàm onended ở trên!
+                return;
+            }
+
+            // Hiển thị con số đếm ngược
+            let seconds = Math.ceil(distance / 1000);
+            if (seconds <= 5) {
+                countdownEl.innerText = seconds; 
+            } else {
+                let hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                let minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                let secs = Math.floor((distance % (1000 * 60)) / 1000);
+                countdownEl.innerText = `${hours}h ${minutes}m ${secs}s`;
+            }
+        }
+
+        setInterval(updateTimer, 50);
+
+        // Chức năng Admin
+        function loginAdmin() {
+            let pass = document.getElementById("admin-pass").value;
+            if (pass === "admin123") {
+                document.getElementById("login-form").classList.add("hidden");
+                document.getElementById("admin-controls").classList.remove("hidden");
+            } else {
+                alert("Mật khẩu không đúng!");
+            }
+        }
+
+        function testCountdown() {
+            targetTime = new Date().getTime() + 5000 + PRE_SPEECH_DELAY;
+            audioPlayed = false;
+            fireworksTriggered = false;
+            document.body.classList.remove("dark-mode");
+            tetAudio.pause(); tetAudio.currentTime = 0;
+            fireworksAudio.pause(); fireworksAudio.currentTime = 0;
+            countdownEl.innerText = "Đang chuẩn bị...";
+        }
+
+        function resetTest() {
+            targetTime = new Date("2027-02-06T00:00:00").getTime();
+            audioPlayed = false;
+            fireworksTriggered = false;
+            document.body.classList.remove("dark-mode");
+            tetAudio.pause(); tetAudio.currentTime = 0;
+            fireworksAudio.pause(); fireworksAudio.currentTime = 0;
+            countdownEl.innerText = "Đang tải...";
+        }
+
+        // Hiệu ứng Canvas Pháo Hoa
+        const canvas = document.getElementById("fireworksCanvas");
+        const ctx = canvas.getContext("2d");
+        let particles = [];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function startFireworks() {
+            setInterval(() => {
+                let x = Math.random() * canvas.width;
+                let y = Math.random() * (canvas.height / 2);
+                createFirework(x, y);
+            }, 250);
+            animateFireworks();
+        }
+
+        function createFirework(x, y) {
+            let count = 60;
+            for (let i = 0; i < count; i++) {
+                let angle = (Math.PI * 2 / count) * i;
+                let speed = Math.random() * 6 + 2;
+                particles.push({
+                    x: x, y: y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    alpha: 1,
+                    color: `hsl(${Math.random() * 360}, 100%, 50%)`
+                });
+            }
+        }
+
+        function animateFireworks() {
+            requestAnimationFrame(animateFireworks);
+            ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            particles.forEach((p, index) => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.alpha -= 0.015;
+
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.alpha;
+                ctx.fill();
+
+                if (p.alpha <= 0) particles.splice(index, 1);
+            });
+        }
+    </script>
+</body>
+</html>
