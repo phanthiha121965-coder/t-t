@@ -63,7 +63,7 @@
         </div>
     </div>
 
-    <!-- 2 File âm thanh trỏ chuẩn vào thư mục static -->
+    <!-- 2 File âm thanh -->
     <audio id="tetAudio" src="/static/tet.mp3" preload="auto"></audio>
     <audio id="fireworksAudio" src="/static/fireworks_sound.mp3" preload="auto"></audio>
 
@@ -74,7 +74,6 @@
         const fireworksAudio = document.getElementById("fireworksAudio");
         const countdownEl = document.getElementById("countdown");
         
-        const PRE_SPEECH_DELAY = 3500; 
         let audioPlayed = false;
         let fireworksTriggered = false;
 
@@ -91,11 +90,16 @@
             let now = new Date().getTime();
             let distance = targetTime - now;
 
-            let triggerPoint = 5000 + PRE_SPEECH_DELAY;
+            let triggerPoint = 10000; 
 
             if (distance <= triggerPoint && distance > 0 && !audioPlayed) {
                 audioPlayed = true;
                 tetAudio.currentTime = 0;
+                
+                // CHỈNH TỐC ĐỘ NHẠC TẾT: 0.8 là chậm lại 80% (nghe vừa vặn, rõ tiếng). 
+                // Nếu thấy vẫn nhanh có thể đổi thành 0.75, hoặc nhanh hơn thì đổi thành 0.85
+                tetAudio.playbackRate = 0.8; 
+
                 tetAudio.play().catch(e => console.log("Cần click trang web để phát âm thanh"));
             }
 
@@ -108,7 +112,7 @@
                 return;
             }
 
-            let seconds = Math.ceil(distance / 1000);
+            let seconds = Math.floor(distance / 1000);
             if (seconds <= 5) {
                 countdownEl.innerText = seconds; 
             } else {
@@ -119,7 +123,7 @@
             }
         }
 
-        setInterval(updateTimer, 50);
+        setInterval(updateTimer, 1000);
 
         function loginAdmin() {
             let pass = document.getElementById("admin-pass").value;
@@ -132,7 +136,7 @@
         }
 
         function testCountdown() {
-            targetTime = new Date().getTime() + 5000 + PRE_SPEECH_DELAY;
+            targetTime = new Date().getTime() + 10000;
             audioPlayed = false;
             fireworksTriggered = false;
             document.body.classList.remove("dark-mode");
