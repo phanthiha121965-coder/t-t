@@ -30,15 +30,17 @@
             pointer-events: none; z-index: 99; 
         }
 
-        .admin-panel {
+        /* Bảng điều khiển thử nghiệm nổi trực tiếp, không cần đăng nhập */
+        .control-panel {
             position: fixed; bottom: 20px; right: 20px;
             background: rgba(0, 0, 0, 0.85); border: 2px solid #ffd700;
             border-radius: 10px; padding: 15px; color: #fff; z-index: 1000; text-align: left;
         }
-        .admin-panel input, .admin-panel button { padding: 8px; margin-top: 5px; border-radius: 5px; border: none; font-size: 0.9rem; }
-        .admin-panel button { background-color: #28a745; color: white; cursor: pointer; font-weight: bold; }
-        .admin-panel button:hover { background-color: #218838; }
-        .hidden { display: none !important; }
+        .control-panel button { padding: 8px 12px; margin-top: 5px; border-radius: 5px; border: none; font-size: 0.9rem; font-weight: bold; cursor: pointer; }
+        .btn-test { background-color: #28a745; color: white; }
+        .btn-test:hover { background-color: #218838; }
+        .btn-reset { background-color: #dc3545; color: white; margin-left: 5px; }
+        .btn-reset:hover { background-color: #c82333; }
     </style>
 </head>
 <body>
@@ -48,40 +50,50 @@
 
     <canvas id="fireworksCanvas"></canvas>
 
-    <!-- Admin Panel -->
-    <div class="admin-panel">
-        <div id="login-form">
-            <h3>Đăng nhập Admin</h3>
-            <input type="password" id="admin-pass" placeholder="Nhập mật khẩu">
-            <button onclick="loginAdmin()">Vào Admin</button>
-        </div>
-        <div id="admin-controls" class="hidden">
-            <h3 style="color: #ffd700;">Quản Trị Admin</h3>
-            <p style="margin-top: 5px; font-size: 0.8rem;">Test đếm ngược -> Lời chúc -> Pháo hoa:</p>
-            <button onclick="testCountdown()">▶ Test Ngay</button>
-            <button onclick="resetTest()" style="background-color: #dc3545; margin-left: 5px;">Reset</button>
-        </div>
+    <!-- Bảng Thử Nghiệm Nhanh (Không cần đăng nhập) -->
+    <div class="control-panel">
+        <h3 style="color: #ffd700; font-size: 1rem;">Bảng Thử Nghiệm</h3>
+        <p style="margin-top: 3px; font-size: 0.75rem;">Test hiệu ứng âm thanh & pháo hoa:</p>
+        <button class="btn-test" onclick="testCountdown()">▶ Test Ngay</button>
+        <button class="btn-reset" onclick="resetTest()">Reset</button>
     </div>
 
-    <!-- 2 File âm thanh -->
-    <audio id="tetAudio" src="/static/tet.mp3" preload="auto"></audio>
-    <audio id="fireworksAudio" src="/static/fireworks_sound.mp3" preload="auto"></audio>
+    <!-- 3 File âm thanh cắt nhỏ + 1 file nhạc pháo hoa -->
+    <audio id="audioPart1" src="/static/chuan_bi.mp3" preload="auto"></audio>
+    <audio id="audioPart2" src="/static/dem_nguoc.mp3" preload="auto"></audio>
+    <audio id="audioPart3" src="/static/chuc_tet.mp3" preload="auto"></audio>
+    <audio id="fireworksAudio" src="/static/nhac_tet.mp3" preload="auto"></audio>
 
     <script>
         let targetTime = new Date("2027-02-06T00:00:00").getTime();
         
-        const tetAudio = document.getElementById("tetAudio");
+        const audioPart1 = document.getElementById("audioPart1");
+        const audioPart2 = document.getElementById("audioPart2");
+        const audioPart3 = document.getElementById("audioPart3");
         const fireworksAudio = document.getElementById("fireworksAudio");
         const countdownEl = document.getElementById("countdown");
         
         let audioPlayed = false;
         let fireworksTriggered = false;
 
-        tetAudio.onended = function() {
+        // Chuỗi phát nối tiếp 3 file âm thanh cực kỳ mượt mà:
+        audioPart1.onended = function() {
+            audioPart2.currentTime = 0;
+            audioPart2.playbackRate = 0.7; // Chậm rãi đúng nhịp đếm 5-4-3-2-1
+            audioPart2.play().catch(e => console.log("Lỗi phần 2"));
+        };
+
+        audioPart2.onended = function() {
+            audioPart3.currentTime = 0;
+            audioPart3.playbackRate = 1.0; // Đọc câu chúc bình an
+            audioPart3.play().catch(e => console.log("Lỗi phần 3"));
+        };
+
+        audioPart3.onended = function() {
             if (!fireworksTriggered) {
                 fireworksTriggered = true;
                 fireworksAudio.currentTime = 0;
-                fireworksAudio.play().catch(e => console.log("Lỗi phát tiếng pháo hoa"));
+                fireworksAudio.play().catch(e => console.log("Lỗi phát nhạc pháo hoa"));
                 startFireworks();
             }
         };
@@ -92,17 +104,14 @@
 
             let triggerPoint = 10000; 
 
-            // 1. Kích hoạt phát nhạc ở đoạn đầu với tốc độ bình thường (1.0)
             if (distance <= triggerPoint && distance > 0 && !audioPlayed) {
                 audioPlayed = true;
-                tetAudio.currentTime = 0;
-                tetAudio.playbackRate = 1.0; // Tốc độ bình thường cho đoạn đầu
-                tetAudio.play().catch(e => console.log("Cần click trang web để phát âm thanh"));
+                audioPart1.currentTime = 0;
+                audioPart1.playbackRate = 1.0;
+                audioPart1.play().catch(e => console.log("Cần click trang web để phát âm thanh"));
             }
 
-            // 2. KHI VÀO 5 GIÂY CUỐI (<= 5000ms): Tự động hãm tốc độ nhạc chậm lại (0.65) để đếm 5 4 3 2 1 thong thả, rõ từng tiếng!
             if (distance <= 5000 && distance > 0) {
-                tetAudio.playbackRate = 0.65; // Giảm tốc độ xuống để đọc chậm rãi 5 giây cuối
                 document.body.classList.add("dark-mode");
             }
 
@@ -124,22 +133,14 @@
 
         setInterval(updateTimer, 1000);
 
-        function loginAdmin() {
-            let pass = document.getElementById("admin-pass").value;
-            if (pass === "admin123") {
-                document.getElementById("login-form").classList.add("hidden");
-                document.getElementById("admin-controls").classList.remove("hidden");
-            } else {
-                alert("Mật khẩu không đúng!");
-            }
-        }
-
         function testCountdown() {
             targetTime = new Date().getTime() + 10000;
             audioPlayed = false;
             fireworksTriggered = false;
             document.body.classList.remove("dark-mode");
-            tetAudio.pause(); tetAudio.currentTime = 0;
+            audioPart1.pause(); audioPart1.currentTime = 0;
+            audioPart2.pause(); audioPart2.currentTime = 0;
+            audioPart3.pause(); audioPart3.currentTime = 0;
             fireworksAudio.pause(); fireworksAudio.currentTime = 0;
             countdownEl.innerText = "Đang chuẩn bị...";
         }
@@ -149,7 +150,9 @@
             audioPlayed = false;
             fireworksTriggered = false;
             document.body.classList.remove("dark-mode");
-            tetAudio.pause(); tetAudio.currentTime = 0;
+            audioPart1.pause(); audioPart1.currentTime = 0;
+            audioPart2.pause(); audioPart2.currentTime = 0;
+            audioPart3.pause(); audioPart3.currentTime = 0;
             fireworksAudio.pause(); fireworksAudio.currentTime = 0;
             countdownEl.innerText = "Đang tải...";
         }
