@@ -57,72 +57,58 @@
         <button class="btn-reset" onclick="resetTest()">Reset</button>
     </div>
 
-    <!-- Thẻ audio chính và pháo hoa -->
-    <audio id="mainAudio" preload="auto"></audio>
+    <!-- Sử dụng lại file tet.mp3 gộp chung chuẩn chỉnh ban đầu + nhạc pháo hoa -->
+    <audio id="tetAudio" src="/static/tet.mp3" preload="auto"></audio>
     <audio id="fireworksAudio" src="/static/nhac_tet.mp3" preload="auto"></audio>
 
     <script>
         let targetTime = new Date("2027-02-06T00:00:00").getTime();
         
-        const mainAudio = document.getElementById("mainAudio");
+        const tetAudio = document.getElementById("tetAudio");
         const fireworksAudio = document.getElementById("fireworksAudio");
         const countdownEl = document.getElementById("countdown");
         
-        let preparationPlayed = false;
-        let countdownPlayed = false;
-        let greetingPlayed = false;
+        let audioPlayed = false;
         let fireworksTriggered = false;
+
+        // Khi file tetAudio (chứa lời dạo + đếm ngược + câu chúc) chạy xong hoàn toàn -> Bật nhạc pháo hoa và bắn pháo hoa rợp trời!
+        tetAudio.onended = function() {
+            if (!fireworksTriggered) {
+                fireworksTriggered = true;
+                fireworksAudio.currentTime = 0;
+                fireworksAudio.play().catch(e => console.log("Lỗi phát nhạc pháo hoa"));
+                startFireworks();
+            }
+        };
 
         function updateTimer() {
             let now = new Date().getTime();
             let distance = targetTime - now;
 
+            // Kích hoạt phát file tetAudio trước mốc 0 một khoảng thời gian vừa đúng độ dài của file âm thanh (ví dụ 10 giây cuối)
+            let triggerPoint = 10000; 
+
+            if (distance <= triggerPoint && distance > 0 && !audioPlayed) {
+                audioPlayed = true;
+                tetAudio.currentTime = 0;
+                tetAudio.playbackRate = 1.0;
+                tetAudio.play().catch(e => console.log("Cần click trang web để phát âm thanh"));
+            }
+
+            // Khi vào 5 giây cuối -> Chuyển màn hình sang nền đen
+            if (distance <= 5000 && distance > 0) {
+                document.body.classList.add("dark-mode");
+            }
+
+            // Khi đến mốc 0 giây
             if (distance <= 0) {
                 countdownEl.innerText = "CHÚC MỪNG NĂM MỚI!";
-                document.body.classList.add("dark-mode");
-                return;
+                return; // Chờ file tetAudio đọc xong câu chúc thì sự kiện onended ở trên sẽ tự động kích hoạt pháo hoa
             }
 
             let seconds = Math.floor(distance / 1000);
-
-            // 1. Khi đồng hồ còn 11 giây -> Bắt đầu phát câu chuẩn bị ("Chuẩn bị sẵn sàng chưa...")[span_1](start_span)[span_1](end_span)
-            if (seconds === 11 && !preparationPlayed) {
-                preparationPlayed = true;
-                mainAudio.src = "/static/chuan_bi.mp3";
-                mainAudio.playbackRate = 1.0;
-                mainAudio.play().catch(e => console.log("Cần click trang web để phát âm thanh"));
-            }
-
-            // 2. Khi đồng hồ chuyển chính xác về 5 giây -> Ép chuyển sang phát file đếm ngược ("5, 4, 3, 2, 1")[span_2](start_span)[span_2](end_span)
-            if (seconds === 5 && !countdownPlayed) {
-                countdownPlayed = true;
-                mainAudio.src = "/static/dem_nguoc.mp3";
-                mainAudio.playbackRate = 0.7; // Chỉnh tốc độ chậm rãi khớp nhịp đếm
-                mainAudio.play().catch(e => console.log("Lỗi file đếm ngược"));
-            }
-
-            // 3. Khi đồng hồ về 0 giây -> Phát câu chúc Tết ("Một năm mới bình an")[span_3](start_span)[span_3](end_span)
-            if (seconds === 0 && !greetingPlayed) {
-                greetingPlayed = true;
-                mainAudio.src = "/static/chuc_tet.mp3";
-                mainAudio.playbackRate = 1.0;
-                mainAudio.play().catch(e => console.log("Lỗi file chúc tết"));
-
-                // Khi câu chúc đọc xong -> Bật nhạc pháo hoa và bắn pháo hoa
-                mainAudio.onended = function() {
-                    if (!fireworksTriggered) {
-                        fireworksTriggered = true;
-                        fireworksAudio.currentTime = 0;
-                        fireworksAudio.play().catch(e => console.log("Lỗi phát nhạc pháo hoa"));
-                        startFireworks();
-                    }
-                };
-            }
-
-            // Hiển thị giao diện trên màn hình
             if (seconds <= 5) {
-                countdownEl.innerText = seconds;
-                document.body.classList.add("dark-mode");
+                countdownEl.innerText = seconds; 
             } else {
                 let hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
                 let minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
@@ -131,29 +117,24 @@
             }
         }
 
-        setInterval(updateTimer, 200); // Quét nhanh 200ms một lần để bắt chuẩn từng giây chính xác tuyệt đối
+        setInterval(updateTimer, 1000);
 
         function testCountdown() {
-            // Test thử lùi về 12 giây trước mốc 0 để chạy trọn vẹn chuỗi âm thanh
-            targetTime = new Date().getTime() + 12000;
-            preparationPlayed = false;
-            countdownPlayed = false;
-            greetingPlayed = false;
+            targetTime = new Date().getTime() + 10000;
+            audioPlayed = false;
             fireworksTriggered = false;
             document.body.classList.remove("dark-mode");
-            mainAudio.pause(); mainAudio.currentTime = 0;
+            tetAudio.pause(); tetAudio.currentTime = 0;
             fireworksAudio.pause(); fireworksAudio.currentTime = 0;
             countdownEl.innerText = "Đang chuẩn bị...";
         }
 
         function resetTest() {
             targetTime = new Date("2027-02-06T00:00:00").getTime();
-            preparationPlayed = false;
-            countdownPlayed = false;
-            greetingPlayed = false;
+            audioPlayed = false;
             fireworksTriggered = false;
             document.body.classList.remove("dark-mode");
-            mainAudio.pause(); mainAudio.currentTime = 0;
+            tetAudio.pause(); tetAudio.currentTime = 0;
             fireworksAudio.pause(); fireworksAudio.currentTime = 0;
             countdownEl.innerText = "Đang tải...";
         }
