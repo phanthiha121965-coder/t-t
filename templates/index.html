@@ -42,7 +42,7 @@
             transition: background 1s ease;
         }
 
-        /* Chế độ nền đen hoàn toàn và ẩn các thành phần khi pháo hoa nổ */
+        /* Chế độ nền đen hoàn toàn khi pháo hoa nổ */
         body.fireworks-mode {
             background: #000000 !important;
         }
@@ -72,7 +72,7 @@
             transition: all 0.5s ease;
         }
 
-        /* Khi vào chế độ test/pháo hoa, khung chữ phóng to và nổi bật ở giữa màn hình đen */
+        /* Phóng to khung chữ khi test */
         body.fireworks-mode #wishCardContainer {
             position: fixed;
             top: 50%;
@@ -128,9 +128,10 @@
         }
         .lantern { transform-origin: top center; animation: swing 3s ease-in-out infinite; }
 
+        /* Lớp phủ mở khóa âm thanh cố định ở trên cùng, z-index cực lớn */
         #sound-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(18, 0, 3, 0.96); z-index: 99999;
+            background: rgba(18, 0, 3, 0.96); z-index: 999999;
             display: flex; flex-direction: column; justify-content: center; align-items: center;
             transition: opacity 0.5s ease;
         }
@@ -138,7 +139,7 @@
 </head>
 <body class="relative flex flex-col justify-between min-h-screen select-none overflow-x-hidden">
 
-    <!-- LỚP PHỦ MỞ KHÓA ÂM THANH -->
+    <!-- LỚP PHỦ MỞ KHÓA ÂM THANH (ĐÃ FIX KHÔNG BỊ LỖI NỮA) -->
     <div id="sound-overlay">
         <div class="glass-panel max-w-md w-full mx-4 rounded-3xl p-8 text-center border-2 border-gold-400/50 shadow-2xl">
             <div class="w-16 h-16 mx-auto mb-4 rounded-full border-2 border-gold-400 bg-ruby-900 flex items-center justify-center shadow-lg">
@@ -146,8 +147,8 @@
             </div>
             <h2 class="text-2xl font-serif font-extrabold gold-text-gradient mb-2">ĐẾM NGƯỢC TẾT 2027</h2>
             <p class="text-amber-100/80 text-sm mb-6">Bấm nút bên dưới để bật âm thanh Giao Thừa và trải nghiệm pháo hoa!</p>
-            <button onclick="enableSoundAndEnter()" class="gold-btn w-full py-4 rounded-full text-sm uppercase tracking-widest font-extrabold flex items-center justify-center gap-2">
-                <i class="fa-solid fa-play"></i> Bắt Đầu Trải Nghiệm
+            <button onclick="enableSound()" class="gold-btn w-full py-4 rounded-full text-sm uppercase tracking-widest font-extrabold flex items-center justify-center gap-2">
+                <i class="fa-solid fa-play"></i> BẮT ĐẦU TRẢI NGHIỆM
             </button>
         </div>
     </div>
@@ -230,7 +231,7 @@
                 </div>
             </div>
 
-            <!-- Khung Lời Chúc / Đếm Ngược Trung Tâm (Phóng to khi test) -->
+            <!-- Khung Lời Chúc Trung Tâm (Phóng to khi test) -->
             <div id="wishCardContainer" class="glass-panel max-w-2xl mx-auto rounded-3xl p-6 sm:p-10 relative overflow-hidden mb-8 shadow-2xl">
                 <i class="fa-solid fa-quote-left text-2xl text-gold-500/30 mb-2 block"></i>
                 <p id="wishDisplayText" class="font-serif italic text-xl sm:text-3xl text-gold-100 font-medium leading-relaxed min-h-[4rem] flex items-center justify-center px-4">
@@ -267,14 +268,14 @@
         let isTesting = false;
         let fireworksStarted = false;
 
-        function enableSoundAndEnter() {
+        function enableSound() {
             document.getElementById('sound-overlay').style.opacity = '0';
             setTimeout(() => { document.getElementById('sound-overlay').style.display = 'none'; }, 500);
             soundAllowed = true;
             tetAudio.play().then(() => { tetAudio.pause(); tetAudio.currentTime = 0; }).catch(e => {});
         }
 
-        // --- HIỆU ỨNG ĐÁNH CHỮ (TYPING EFFECT) KHÔNG BỊ GHI ĐÈ LỖI ---
+        // --- HIỆU ỨNG ĐÁNH CHỮ (TYPING EFFECT) ---
         let typingTimeout = null;
         function typeWriter(element, text, speed = 45) {
             if (typingTimeout) clearTimeout(typingTimeout);
@@ -407,189 +408,6 @@
             constructor() { this.reset(); }
             reset() {
                 this.x = Math.random() * dWidth;
-                this.ym:text-6xl md:text-7xl font-extrabold font-display gold-text-gradient">00</span>
-                    <div class="w-8 h-[1px] bg-gold-500/30 my-1"></div>
-                    <span class="text-[10px] sm:text-xs uppercase tracking-[0.25em] text-gold-400/80 font-bold">Phút</span>
-                </div>
-                <div class="time-card-bg aspect-[4/4.5] rounded-2xl flex flex-col items-center justify-center relative overflow-hidden border-gold-400/60 shadow-lg">
-                    <span id="seconds" class="text-4xl sm:text-6xl md:text-7xl font-extrabold font-display text-red-400">00</span>
-                    <div class="w-8 h-[1px] bg-gold-500/30 my-1"></div>
-                    <span class="text-[10px] sm:text-xs uppercase tracking-[0.25em] text-red-300/80 font-bold">Giây</span>
-                </div>
-            </div>
-
-            <!-- Dynamic Wish Banner với hiệu ứng đánh chữ -->
-            <div class="glass-panel max-w-2xl mx-auto rounded-2xl p-6 sm:p-8 relative overflow-hidden mb-10">
-                <i class="fa-solid fa-quote-left text-2xl text-gold-500/30 mb-2 block"></i>
-                <p id="wishDisplayText" class="font-serif italic text-lg sm:text-2xl text-gold-100 font-medium leading-relaxed min-h-[3.5rem] flex items-center justify-center px-4">
-                    "Vạn sự như ý - Tấn tài tấn lộc - Xuân Đinh Mùi rạng rỡ huy hoàng!"
-                </p>
-                <i class="fa-solid fa-quote-right text-2xl text-gold-500/30 mt-2 block ml-auto"></i>
-            </div>
-
-            <div class="flex flex-wrap justify-center items-center gap-4 sm:gap-6">
-                <button id="drawQueBtn" class="gold-btn px-8 py-4 rounded-full flex items-center gap-3 text-sm font-bold uppercase tracking-wider">
-                    <i class="fa-solid fa-scroll text-lg"></i> Rút Quẻ Lộc Xuân
-                </button>
-                <button id="fireworksBtn" class="glass-btn px-8 py-4 rounded-full flex items-center gap-3 text-sm font-bold uppercase tracking-wider">
-                    <i class="fa-solid fa-fireworks text-lg text-gold-400"></i> Test Pháo Hoa Ngay
-                </button>
-            </div>
-        </div>
-    </main>
-
-    <footer id="mainFooter" class="relative z-30 py-6 text-center text-xs text-gold-400/50 font-light tracking-widest uppercase transition-opacity duration-500">
-        <p>❖ Đón Xuân Đinh Mùi 2027 • An Khang Thịnh Vượng ❖</p>
-    </footer>
-
-    <!-- AUDIO CHUẨN GỐC TET.MP3 -->
-    <audio id="tetAudio" src="/static/tet.mp3" preload="auto"></audio>
-
-    <!-- JAVASCRIPT ENGINE -->
-    <script>
-        const TET_TARGET_DATE = new Date('February 06, 2027 00:00:00').getTime();
-        const tetAudio = document.getElementById('tetAudio');
-        const giantNum = document.getElementById('giantNumberDisplay');
-        const wishTextEl = document.getElementById('wishDisplayText');
-        
-        let soundAllowed = false;
-        let isTesting = false;
-        let fireworksStarted = false;
-
-        function enableSoundAndEnter() {
-            document.getElementById('sound-overlay').style.opacity = '0';
-            setTimeout(() => { document.getElementById('sound-overlay').style.display = 'none'; }, 500);
-            soundAllowed = true;
-            tetAudio.play().then(() => { tetAudio.pause(); tetAudio.currentTime = 0; }).catch(e => {});
-        }
-
-        // --- HIỆU ỨNG ĐÁNH CHỮ (TYPING EFFECT) ---
-        function typeWriter(element, text, speed = 40, callback) {
-            element.innerText = "";
-            element.classList.add("typing-cursor");
-            let i = 0;
-            function typing() {
-                if (i < text.length) {
-                    element.innerText += text.charAt(i);
-                    i++;
-                    setTimeout(typing, speed);
-                } else {
-                    element.classList.remove("typing-cursor");
-                    if (callback) callback();
-                }
-            }
-            typing();
-        }
-
-        // --- SYNC AUDIO THỜI GIAN THỰC & ĐẾM NGƯỢC KHỔNG LỒ ---
-        tetAudio.ontimeupdate = function() {
-            if (!isTesting && !soundAllowed) return;
-            let t = tetAudio.currentTime;
-
-            if (t < 2.5) {
-                giantNum.classList.remove('active');
-                wishTextEl.innerText = "Sẵn sàng đón giao thừa...";
-            } else if (t >= 2.5 && t < 3.5) {
-                giantNum.classList.add('active');
-                giantNum.innerText = "5";
-            } else if (t >= 3.5 && t < 4.5) {
-                giantNum.innerText = "4";
-            } else if (t >= 4.5 && t < 5.5) {
-                giantNum.innerText = "3";
-            } else if (t >= 5.5 && t < 6.5) {
-                giantNum.innerText = "2";
-            } else if (t >= 6.5 && t < 7.5) {
-                giantNum.innerText = "1";
-            } else if (t >= 7.5 && t < 11.2) {
-                // Tắt số to, hiện hiệu ứng đánh chữ câu chúc ở banner
-                giantNum.classList.remove('active');
-                if (wishTextEl.innerText !== "✨ Chúc Mừng Năm Mới - Một Năm Mới Bình An ✨") {
-                    typeWriter(wishTextEl, "✨ Chúc Mừng Năm Mới - Một Năm Mới Bình An ✨", 50);
-                }
-            } else if (t >= 11.2) {
-                // VỪA DỨT CÂU CHÚC -> CHUYỂN NỀN ĐEN + BÙNG NỔ PHÁO HOA LIÊN TỤC!
-                if (!fireworksStarted) {
-                    fireworksStarted = true;
-                    document.body.classList.add('fireworks-bg');
-                    typeWriter(wishTextEl, "🎉 CHÚC MỪNG NĂM MỚI ĐINH MÙI 2027! 🎉", 40);
-                    startFireworksEngine();
-                }
-            }
-        };
-
-        // KHI BÀI HÁT CHẠY XONG HẲN -> TỰ ĐỘNG THU DÒN PHÁO HOA, VỀ GIAO DIỆN CHÍNH
-        tetAudio.onended = function() {
-            document.body.classList.remove('fireworks-bg');
-            fireworksStarted = false;
-            isTesting = false;
-            fireworks = [];
-            particles = [];
-            wishTextEl.innerText = "Vạn sự như ý - Tấn tài tấn lộc - Xuân Đinh Mùi rạng rỡ huy hoàng!";
-        };
-
-        const daysEl = document.getElementById('days');
-        const hoursEl = document.getElementById('hours');
-        const minutesEl = document.getElementById('minutes');
-        const secondsEl = document.getElementById('seconds');
-
-        function updateCountdown() {
-            if (!soundAllowed || isTesting) return;
-            const now = new Date().getTime();
-            const diff = TET_TARGET_DATE - now;
-
-            if (diff <= 0) {
-                if (!fireworksStarted && tetAudio.paused) {
-                    tetAudio.currentTime = 0;
-                    tetAudio.play().catch(e => {});
-                    isTesting = true;
-                }
-                return;
-            }
-
-            const d = Math.floor(diff / (1000 * 60 * 60 * 24));
-            const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-            const s = Math.floor((diff % (1000 * 60)) / 1000);
-
-            daysEl.innerText = d < 10 ? '0' + d : d;
-            hoursEl.innerText = h < 10 ? '0' + h : h;
-            minutesEl.innerText = m < 10 ? '0' + m : m;
-            secondsEl.innerText = s < 10 ? '0' + s : s;
-
-            if (d === 0 && h === 0 && m === 0 && s <= 12) {
-                if (tetAudio.paused) {
-                    tetAudio.currentTime = 0;
-                    tetAudio.play().catch(e => {});
-                    isTesting = true;
-                }
-            }
-        }
-        setInterval(updateCountdown, 200);
-
-        // Nút Test Pháo Hoa Nhanh
-        document.getElementById('fireworksBtn').addEventListener('click', () => {
-            soundAllowed = true;
-            isTesting = true;
-            fireworksStarted = false;
-            tetAudio.currentTime = 0;
-            tetAudio.play().catch(e => console.log(e));
-            particles = [];
-            fireworks = [];
-        });
-
-
-        /* ==========================================================================
-           CANVAS ENGINES (Dust, Petals, Fireworks)
-           ========================================================================== */
-        const dustCanvas = document.getElementById('dustCanvas');
-        const ctxDust = dustCanvas.getContext('2d');
-        let dWidth = dustCanvas.width = window.innerWidth;
-        let dHeight = dustCanvas.height = window.innerHeight;
-
-        class DustParticle {
-            constructor() { this.reset(); }
-            reset() {
-                this.x = Math.random() * dWidth;
                 this.y = Math.random() * dHeight;
                 this.size = Math.random() * 2 + 0.5;
                 this.alpha = Math.random() * 0.6 + 0.1;
@@ -609,7 +427,7 @@
                 ctxDust.restore();
             }
         }
-        const dustList = Array.from({ length: 30 }, () => new DustParticle());
+        const dustList = Array.from({ length: 25 }, () => new DustParticle());
         function animateDust() {
             ctxDust.clearRect(0, 0, dWidth, dHeight);
             dustList.forEach(d => { d.update(); d.draw(); });
@@ -649,7 +467,7 @@
                 ctxPetals.restore();
             }
         }
-        const petalsList = Array.from({ length: 30 }, () => new Petal());
+        const petalsList = Array.from({ length: 25 }, () => new Petal());
         function animatePetals() {
             ctxPetals.clearRect(0, 0, pWidth, pHeight);
             petalsList.forEach(p => { p.update(); p.draw(); });
@@ -657,7 +475,7 @@
         }
         animatePetals();
 
-        /* Pháo Hoa Đỉnh Cao */
+        /* Pháo Hoa Tinh Tế & Sang Trọng */
         const fwCanvas = document.getElementById('fireworksCanvas');
         const ctxFW = fwCanvas.getContext('2d');
         let fWidth = fwCanvas.width = window.innerWidth;
@@ -685,9 +503,9 @@
                 this.coordinateCount = 4;
                 while (this.coordinateCount--) { this.coordinates.push([this.x, this.y]); }
                 this.angle = Math.atan2(targetY - startY, targetX - startX);
-                this.speed = 10;
-                this.acceleration = 1.05;
-                this.brightness = Math.random() * 30 + 70;
+                this.speed = 9;
+                this.acceleration = 1.04;
+                this.brightness = Math.random() * 20 + 80;
                 this.hue = Math.random() * 360;
             }
             update(index) {
@@ -709,7 +527,7 @@
                 ctxFW.moveTo(this.coordinates[this.coordinates.length - 1][0], this.coordinates[this.coordinates.length - 1][1]);
                 ctxFW.lineTo(this.x, this.y);
                 ctxFW.strokeStyle = `hsl(${this.hue}, 100%, ${this.brightness}%)`;
-                ctxFW.lineWidth = 3;
+                ctxFW.lineWidth = 2.5;
                 ctxFW.stroke();
             }
         }
@@ -719,16 +537,16 @@
                 this.x = x;
                 this.y = y;
                 this.coordinates = [];
-                this.coordinateCount = 6;
+                this.coordinateCount = 5;
                 while (this.coordinateCount--) { this.coordinates.push([this.x, this.y]); }
                 this.angle = Math.random() * Math.PI * 2;
-                this.speed = Math.random() * 12 + 2;
-                this.friction = 0.94;
-                this.gravity = 0.5;
-                this.hue = hue + (Math.random() - 0.5) * 40;
-                this.brightness = Math.random() * 40 + 60;
+                this.speed = Math.random() * 10 + 1.5;
+                this.friction = 0.95;
+                this.gravity = 0.4;
+                this.hue = hue + (Math.random() - 0.5) * 30;
+                this.brightness = Math.random() * 30 + 70;
                 this.alpha = 1;
-                this.decay = Math.random() * 0.012 + 0.008;
+                this.decay = Math.random() * 0.015 + 0.01;
             }
             update(index) {
                 this.coordinates.pop();
@@ -750,7 +568,7 @@
         }
 
         function createParticles(x, y, hue) {
-            let count = 130;
+            let count = 90;
             while (count--) { particles.push(new Particle(x, y, hue)); }
         }
 
@@ -774,20 +592,11 @@
             while (j--) { particles[j].draw(); particles[j].update(j); }
 
             fwTimer++;
-            if (fwTimer >= 8) {
-                fireworks.push(new Firework(Math.random() * fWidth, fHeight, Math.random() * fWidth, Math.random() * (fHeight * 0.6)));
+            if (fwTimer >= 15) {
+                fireworks.push(new Firework(Math.random() * fWidth, fHeight, Math.random() * (fWidth * 0.8) + fWidth * 0.1, Math.random() * (fHeight * 0.5) + 50));
                 fwTimer = 0;
             }
         }
-
-        // Quẻ Lộc Xuân Modal Logic
-        const fortunes = [
-            { title: "THƯỢNG THƯỢNG CÁT", body: "Công danh rộng mở, tài lộc dồi dào. Năm mới vinh hoa, vạn sự hanh thông như ý nguyện." },
-            { title: "ĐẠI CÁT ĐẠI LỢI", body: "Gia đạo bình an, tiền tài như nước. Gặp hung hóa cát, mưu sự thành công." },
-            { title: "TÀI LỘC HƯNG VƯỢNG", body: "Xuân sang đắc lộc đắc tài, kinh doanh phát đạt, làm ăn tấn tới." }
-        ];
-        const queModal = document.createElement('div');
-        // (Logic modal rút quẻ giữ nguyên gọn gàng)
     </script>
 </body>
 </html>
