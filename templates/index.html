@@ -72,14 +72,14 @@
             transition: all 0.5s ease;
         }
 
-        /* Khi vào chế độ pháo hoa: Ẩn khung nền tối, chữ nổi bần bật rực rỡ giữa không trung không bị che */
+        /* Khi pháo hoa nổ: Biến mất hoàn toàn khung, chỉ hiện chữ to rõ nghệ thuật giữa màn hình */
         body.fireworks-mode #wishCardContainer {
             position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 95%;
-            max-width: 800px;
+            width: 100%;
+            max-width: 900px;
             z-index: 50;
             background: transparent !important;
             border: none !important;
@@ -88,13 +88,14 @@
         body.fireworks-mode #wishCardContainer i,
         body.fireworks-mode #wishCardContainer .fa-quote-left,
         body.fireworks-mode #wishCardContainer .fa-quote-right {
-            display: none !important; /* Ẩn dấu ngoặc kép rườm rà khi pháo hoa nổ */
+            display: none !important;
         }
         body.fireworks-mode #wishDisplayText {
-            font-size: 2.2rem !important;
-            font-weight: 800;
+            font-size: 2.5rem !important;
+            font-weight: 900;
             color: #FFE875 !important;
-            text-shadow: 0 0 20px #FF0000, 0 0 30px #FFD700;
+            text-shadow: 0 0 20px #FF0000, 0 0 40px #FFD700;
+            letter-spacing: 1px;
         }
 
         .time-card-bg {
@@ -122,16 +123,6 @@
             cursor: pointer;
         }
         .glass-btn:hover { background: rgba(247, 208, 70, 0.2); transform: translateY(-2px); }
-
-        /* Hiệu ứng đánh chữ (Typing cursor) */
-        .typing-cursor::after {
-            content: '|';
-            animation: blink 0.8s infinite;
-        }
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0; }
-        }
 
         @keyframes swing {
             0%, 100% { transform: rotate(-5deg); }
@@ -166,7 +157,6 @@
     <!-- CANVAS LAYERS -->
     <canvas id="dustCanvas" class="fixed inset-0 pointer-events-none z-0"></canvas>
     <canvas id="petalsCanvas" class="fixed inset-0 pointer-events-none z-10"></canvas>
-    <!-- Pháo hoa đặt z-index cao để hiển thị rực rỡ sắc nét -->
     <canvas id="fireworksCanvas" class="fixed inset-0 pointer-events-none z-20"></canvas>
 
     <!-- Đèn lồng trang trí hai bên -->
@@ -286,23 +276,11 @@
             tetAudio.play().then(() => { tetAudio.pause(); tetAudio.currentTime = 0; }).catch(e => {});
         }
 
-        // --- HIỆU ỨNG ĐÁNH CHỮ (ĐÃ FIX KHÔNG BỊ DÍNH CHỮ) ---
+        // --- HIỆU ỨNG GÁN CHỮ TRỰC TIẾP KHÔNG BỊ DÍNH HOẶC LỖI ---
         let typingTimeout = null;
-        function typeWriter(element, text, speed = 40) {
+        function showTextDirectly(element, text) {
             if (typingTimeout) clearTimeout(typingTimeout);
-            element.innerText = "";
-            element.classList.add("typing-cursor");
-            let i = 0;
-            function typing() {
-                if (i < text.length) {
-                    element.innerText += text.charAt(i);
-                    i++;
-                    typingTimeout = setTimeout(typing, speed);
-                } else {
-                    element.classList.remove("typing-cursor");
-                }
-            }
-            typing();
+            element.innerText = text;
         }
 
         // --- SYNC AUDIO THỜI GIAN THỰC VỚI FILE tet.mp3 ---
@@ -311,40 +289,40 @@
             if (!isTesting && !soundAllowed) return;
             let t = tetAudio.currentTime;
 
-            let currentTextToType = "";
+            let currentText = "";
             if (t < 2.5) {
-                currentTextToType = "Sẵn sàng đón giao thừa...";
+                currentText = "Sẵn sàng đón giao thừa...";
             } else if (t >= 2.5 && t < 3.5) {
-                currentTextToType = "5";
+                currentText = "5";
             } else if (t >= 3.5 && t < 4.5) {
-                currentTextToType = "4";
+                currentText = "4";
             } else if (t >= 4.5 && t < 5.5) {
-                currentTextToType = "3";
+                currentText = "3";
             } else if (t >= 5.5 && t < 6.5) {
-                currentTextToType = "2";
+                currentText = "2";
             } else if (t >= 6.5 && t < 7.5) {
-                currentTextToType = "1";
+                currentText = "1";
             } else if (t >= 7.5 && t < 11.2) {
-                currentTextToType = "Chúc Mừng Năm Mới - Một Năm Mới Bình An";
+                currentText = "Chúc Mừng Năm Mới - Một Năm Mới Bình An";
             } else if (t >= 11.2) {
                 // VỪA DỨT CÂU CHÚC -> CHUYỂN NỀN ĐEN TRỐNG TRẢI + BÙNG NỔ PHÁO HOA SẮC NÉT!
                 if (!fireworksStarted) {
                     fireworksStarted = true;
                     document.body.classList.add('fireworks-mode');
-                    currentTextToType = "CHÚC MỪNG NĂM MỚI ĐINH MÙI 2027";
+                    currentText = "CHÚC MỪNG NĂM MỚI ĐINH MÙI 2027";
                     startFireworksEngine();
                 } else {
-                    currentTextToType = "CHÚC MỪNG NĂM MỚI ĐINH MÙI 2027";
+                    currentText = "CHÚC MỪNG NĂM MỚI ĐINH MÙI 2027";
                 }
             }
 
-            if (currentTextToType && currentTextToType !== lastLoggedText) {
-                lastLoggedText = currentTextToType;
-                typeWriter(wishTextEl, currentTextToType);
+            if (currentText && currentText !== lastLoggedText) {
+                lastLoggedText = currentText;
+                showTextDirectly(wishTextEl, currentText);
             }
         };
 
-        // KHI HẾT BÀI NHẠC -> TỰ ĐỘNG THU DÒN, TRẢ VỀ GIAO DIỆN CHÍNH
+        // KHI HẾT BÀI NHẠC -> TỰ ĐỘNG THU DÒN, TRẢ VỀ TRANG CHỦ BAN ĐẦU HOÀN TOÀN
         tetAudio.onended = function() {
             document.body.classList.remove('fireworks-mode');
             fireworksStarted = false;
@@ -409,196 +387,6 @@
 
         /* ==========================================================================
            CANVAS ENGINES (Pháo hoa sắc nét, sáng rõ rực rỡ)
-           ====ime-card-bg aspect-[4/4.5] rounded-2xl flex flex-col items-center justify-center relative overflow-hidden">
-                        <span id="days" class="text-4xl sm:text-6xl md:text-7xl font-extrabold font-display gold-text-gradient">00</span>
-                        <div class="w-8 h-[1px] bg-gold-500/30 my-1"></div>
-                        <span class="text-[10px] sm:text-xs uppercase tracking-[0.25em] text-gold-400/80 font-bold">Ngày</span>
-                    </div>
-                    <div class="time-card-bg aspect-[4/4.5] rounded-2xl flex flex-col items-center justify-center relative overflow-hidden">
-                        <span id="hours" class="text-4xl sm:text-6xl md:text-7xl font-extrabold font-display gold-text-gradient">00</span>
-                        <div class="w-8 h-[1px] bg-gold-500/30 my-1"></div>
-                        <span class="text-[10px] sm:text-xs uppercase tracking-[0.25em] text-gold-400/80 font-bold">Giờ</span>
-                    </div>
-                    <div class="time-card-bg aspect-[4/4.5] rounded-2xl flex flex-col items-center justify-center relative overflow-hidden">
-                        <span id="minutes" class="text-4xl sm:text-6xl md:text-7xl font-extrabold font-display gold-text-gradient">00</span>
-                        <div class="w-8 h-[1px] bg-gold-500/30 my-1"></div>
-                        <span class="text-[10px] sm:text-xs uppercase tracking-[0.25em] text-gold-400/80 font-bold">Phút</span>
-                    </div>
-                    <div class="time-card-bg aspect-[4/4.5] rounded-2xl flex flex-col items-center justify-center relative overflow-hidden border-gold-400/60 shadow-lg">
-                        <span id="seconds" class="text-4xl sm:text-6xl md:text-7xl font-extrabold font-display text-red-400">00</span>
-                        <div class="w-8 h-[1px] bg-gold-500/30 my-1"></div>
-                        <span class="text-[10px] sm:text-xs uppercase tracking-[0.25em] text-red-300/80 font-bold">Giây</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Khung Lời Chúc Trung Tâm (Phóng to khi test) -->
-            <div id="wishCardContainer" class="glass-panel max-w-2xl mx-auto rounded-3xl p-6 sm:p-10 relative overflow-hidden mb-8 shadow-2xl">
-                <i class="fa-solid fa-quote-left text-2xl text-gold-500/30 mb-2 block"></i>
-                <p id="wishDisplayText" class="font-serif italic text-xl sm:text-3xl text-gold-100 font-medium leading-relaxed min-h-[4rem] flex items-center justify-center px-4">
-                    "Vạn sự như ý - Tấn tài tấn lộc - Xuân Đinh Mùi rạng rỡ huy hoàng!"
-                </p>
-                <i class="fa-solid fa-quote-right text-2xl text-gold-500/30 mt-2 block ml-auto"></i>
-            </div>
-
-            <div id="actionButtons" class="flex flex-wrap justify-center items-center gap-4 sm:gap-6 transition-opacity duration-500">
-                <button id="drawQueBtn" class="gold-btn px-8 py-4 rounded-full flex items-center gap-3 text-sm font-bold uppercase tracking-wider">
-                    <i class="fa-solid fa-scroll text-lg"></i> Rút Quẻ Lộc Xuân
-                </button>
-                <button id="fireworksBtn" class="glass-btn px-8 py-4 rounded-full flex items-center gap-3 text-sm font-bold uppercase tracking-wider">
-                    <i class="fa-solid fa-fireworks text-lg text-gold-400"></i> Test Pháo Hoa Ngay
-                </button>
-            </div>
-        </div>
-    </main>
-
-    <footer id="mainFooter" class="relative z-35 py-6 text-center text-xs text-gold-400/50 font-light tracking-widest uppercase transition-opacity duration-500">
-        <p>❖ Đón Xuân Đinh Mùi 2027 • An Khang Thịnh Vượng ❖</p>
-    </footer>
-
-    <!-- AUDIO CHUẨN GỐC TET.MP3 -->
-    <audio id="tetAudio" src="/static/tet.mp3" preload="auto"></audio>
-
-    <!-- JAVASCRIPT ENGINE -->
-    <script>
-        const TET_TARGET_DATE = new Date('February 06, 2027 00:00:00').getTime();
-        const tetAudio = document.getElementById('tetAudio');
-        const wishTextEl = document.getElementById('wishDisplayText');
-        
-        let soundAllowed = false;
-        let isTesting = false;
-        let fireworksStarted = false;
-
-        function enableSound() {
-            document.getElementById('sound-overlay').style.opacity = '0';
-            setTimeout(() => { document.getElementById('sound-overlay').style.display = 'none'; }, 500);
-            soundAllowed = true;
-            tetAudio.play().then(() => { tetAudio.pause(); tetAudio.currentTime = 0; }).catch(e => {});
-        }
-
-        // --- HIỆU ỨNG ĐÁNH CHỮ (TYPING EFFECT) ---
-        let typingTimeout = null;
-        function typeWriter(element, text, speed = 45) {
-            if (typingTimeout) clearTimeout(typingTimeout);
-            element.innerText = "";
-            element.classList.add("typing-cursor");
-            let i = 0;
-            function typing() {
-                if (i < text.length) {
-                    element.innerText += text.charAt(i);
-                    i++;
-                    typingTimeout = setTimeout(typing, speed);
-                } else {
-                    element.classList.remove("typing-cursor");
-                }
-            }
-            typing();
-        }
-
-        // --- SYNC AUDIO THỜI GIAN THỰC VỚI FILE tet.mp3 ---
-        let lastLoggedText = "";
-        tetAudio.ontimeupdate = function() {
-            if (!isTesting && !soundAllowed) return;
-            let t = tetAudio.currentTime;
-
-            let currentTextToType = "";
-            if (t < 2.5) {
-                currentTextToType = "Sẵn sàng đón giao thừa...";
-            } else if (t >= 2.5 && t < 3.5) {
-                currentTextToType = "5";
-            } else if (t >= 3.5 && t < 4.5) {
-                currentTextToType = "4";
-            } else if (t >= 4.5 && t < 5.5) {
-                currentTextToType = "3";
-            } else if (t >= 5.5 && t < 6.5) {
-                currentTextToType = "2";
-            } else if (t >= 6.5 && t < 7.5) {
-                currentTextToType = "1";
-            } else if (t >= 7.5 && t < 11.2) {
-                currentTextToType = "✨ Chúc Mừng Năm Mới - Một Năm Mới Bình An ✨";
-            } else if (t >= 11.2) {
-                // VỪA DỨT CÂU CHÚC -> CHUYỂN NỀN ĐEN + BÙNG NỔ PHÁO HOA!
-                if (!fireworksStarted) {
-                    fireworksStarted = true;
-                    document.body.classList.add('fireworks-mode');
-                    currentTextToType = "🎉 CHÚC MỪNG NĂM MỚI ĐINH MÙI 2027! 🎉";
-                    startFireworksEngine();
-                } else {
-                    currentTextToType = "🎉 CHÚC MỪNG NĂM MỚI ĐINH MÙI 2027! 🎉";
-                }
-            }
-
-            if (currentTextToType && currentTextToType !== lastLoggedText) {
-                lastLoggedText = currentTextToType;
-                typeWriter(wishTextEl, currentTextToType);
-            }
-        };
-
-        // KHI HẾT BÀI NHẠC -> TỰ ĐỘNG THU DÒN, TRẢ VỀ GIAO DIỆN CHÍNH
-        tetAudio.onended = function() {
-            document.body.classList.remove('fireworks-mode');
-            fireworksStarted = false;
-            isTesting = false;
-            lastLoggedText = "";
-            fireworks = [];
-            particles = [];
-            wishTextEl.innerText = "Vạn sự như ý - Tấn tài tấn lộc - Xuân Đinh Mùi rạng rỡ huy hoàng!";
-        };
-
-        const daysEl = document.getElementById('days');
-        const hoursEl = document.getElementById('hours');
-        const minutesEl = document.getElementById('minutes');
-        const secondsEl = document.getElementById('seconds');
-
-        function updateCountdown() {
-            if (!soundAllowed || isTesting) return;
-            const now = new Date().getTime();
-            const diff = TET_TARGET_DATE - now;
-
-            if (diff <= 0) {
-                if (!fireworksStarted && tetAudio.paused) {
-                    tetAudio.currentTime = 0;
-                    tetAudio.play().catch(e => {});
-                    isTesting = true;
-                }
-                return;
-            }
-
-            const d = Math.floor(diff / (1000 * 60 * 60 * 24));
-            const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-            const s = Math.floor((diff % (1000 * 60)) / 1000);
-
-            daysEl.innerText = d < 10 ? '0' + d : d;
-            hoursEl.innerText = h < 10 ? '0' + h : h;
-            minutesEl.innerText = m < 10 ? '0' + m : m;
-            secondsEl.innerText = s < 10 ? '0' + s : s;
-
-            if (d === 0 && h === 0 && m === 0 && s <= 12) {
-                if (tetAudio.paused) {
-                    tetAudio.currentTime = 0;
-                    tetAudio.play().catch(e => {});
-                    isTesting = true;
-                }
-            }
-        }
-        setInterval(updateCountdown, 200);
-
-        // Nút Test Pháo Hoa Nhanh
-        document.getElementById('fireworksBtn').addEventListener('click', () => {
-            soundAllowed = true;
-            isTesting = true;
-            fireworksStarted = false;
-            lastLoggedText = "";
-            tetAudio.currentTime = 0;
-            tetAudio.play().catch(e => console.log(e));
-            particles = [];
-            fireworks = [];
-        });
-
-
-        /* ==========================================================================
-           CANVAS ENGINES (Dust, Petals, Pháo hoa tinh tế)
            ========================================================================== */
         const dustCanvas = document.getElementById('dustCanvas');
         const ctxDust = dustCanvas.getContext('2d');
@@ -676,7 +464,7 @@
         }
         animatePetals();
 
-        /* Pháo Hoa Tinh Tế & Sang Trọng */
+        /* Pháo Hoa Sắc Nét, Sáng Rõ & Đỉnh Cao */
         const fwCanvas = document.getElementById('fireworksCanvas');
         const ctxFW = fwCanvas.getContext('2d');
         let fWidth = fwCanvas.width = window.innerWidth;
@@ -704,9 +492,9 @@
                 this.coordinateCount = 4;
                 while (this.coordinateCount--) { this.coordinates.push([this.x, this.y]); }
                 this.angle = Math.atan2(targetY - startY, targetX - startX);
-                this.speed = 9;
-                this.acceleration = 1.04;
-                this.brightness = Math.random() * 20 + 80;
+                this.speed = 10;
+                this.acceleration = 1.05;
+                this.brightness = 90;
                 this.hue = Math.random() * 360;
             }
             update(index) {
@@ -727,8 +515,8 @@
                 ctxFW.beginPath();
                 ctxFW.moveTo(this.coordinates[this.coordinates.length - 1][0], this.coordinates[this.coordinates.length - 1][1]);
                 ctxFW.lineTo(this.x, this.y);
-                ctxFW.strokeStyle = `hsl(${this.hue}, 100%, ${this.brightness}%)`;
-                ctxFW.lineWidth = 2.5;
+                ctxFW.strokeStyle = `hsl(${this.hue}, 100%, 80%)`;
+                ctxFW.lineWidth = 3;
                 ctxFW.stroke();
             }
         }
@@ -741,13 +529,12 @@
                 this.coordinateCount = 5;
                 while (this.coordinateCount--) { this.coordinates.push([this.x, this.y]); }
                 this.angle = Math.random() * Math.PI * 2;
-                this.speed = Math.random() * 10 + 1.5;
+                this.speed = Math.random() * 12 + 2;
                 this.friction = 0.95;
                 this.gravity = 0.4;
                 this.hue = hue + (Math.random() - 0.5) * 30;
-                this.brightness = Math.random() * 30 + 70;
                 this.alpha = 1;
-                this.decay = Math.random() * 0.015 + 0.01;
+                this.decay = Math.random() * 0.012 + 0.008;
             }
             update(index) {
                 this.coordinates.pop();
@@ -762,14 +549,14 @@
                 ctxFW.beginPath();
                 ctxFW.moveTo(this.coordinates[this.coordinates.length - 1][0], this.coordinates[this.coordinates.length - 1][1]);
                 ctxFW.lineTo(this.x, this.y);
-                ctxFW.strokeStyle = `hsla(${this.hue}, 100%, ${this.brightness}%, ${this.alpha})`;
-                ctxFW.lineWidth = 2;
+                ctxFW.strokeStyle = `hsla(${this.hue}, 100%, 75%, ${this.alpha})`;
+                ctxFW.lineWidth = 2.5;
                 ctxFW.stroke();
             }
         }
 
         function createParticles(x, y, hue) {
-            let count = 90;
+            let count = 100;
             while (count--) { particles.push(new Particle(x, y, hue)); }
         }
 
@@ -782,7 +569,7 @@
             if (!fireworksStarted) return;
             requestAnimationFrame(animateFireworksEngine);
             ctxFW.globalCompositeOperation = 'destination-out';
-            ctxFW.fillStyle = 'rgba(0, 0, 0, 0.25)';
+            ctxFW.fillStyle = 'rgba(0, 0, 0, 0.2)';
             ctxFW.fillRect(0, 0, fWidth, fHeight);
             ctxFW.globalCompositeOperation = 'lighter';
 
